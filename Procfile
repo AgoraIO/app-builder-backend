@@ -1,1 +1,1 @@
-web: agora-backend
+web: ./bin/agora-backend
