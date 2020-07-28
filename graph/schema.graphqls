@@ -1,0 +1,13 @@
+enum AgoraRole {
+  Publisher
+  Subscriber
+}
+
+type Query {
+  rtc(channel: String!, uid: Int!, role: AgoraRole, time: Int): String!
+  rtm(user: String!, time: Int): String!
+}
+
+type Mutation {
+  login(token: String!): String!
+}
