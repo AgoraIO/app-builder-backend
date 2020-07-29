@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/samyak-jain/agora_backend/graph"
 	"github.com/samyak-jain/agora_backend/graph/generated"
+	"github.com/samyak-jain/agora_backend/models"
 )
 
 const defaultPort = "8080"
@@ -23,7 +24,15 @@ func main() {
 	router := chi.NewRouter()
 	// router.Use(middleware.AuthMiddleware())
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
+	db, err := models.CreateDB(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Panic(err)
+	}
+
+	defer db.Close()
+
+	resolver := &graph.Resolver{db}
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)

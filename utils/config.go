@@ -12,8 +12,8 @@ type AgoraConfig struct {
 	AppCertificate string
 }
 
-// GetConfig returns an AgoraConfig based on what's present in the envfile
-func GetConfig() AgoraConfig {
+// GetAgoraConfig returns an AgoraConfig based on what's present in the envfile
+func GetAgoraConfig() AgoraConfig {
 	viper.SetConfigName("envfile")
 	viper.SetConfigType("json")
 	viper.AddConfigPath(".")
