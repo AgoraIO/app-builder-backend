@@ -1,13 +1,22 @@
-enum AgoraRole {
-  Publisher
-  Subscriber
+type Passphrase {
+  host String
+  view String
+}
+
+type Session { 
+  channel: String
+  rtc: String!
+  rtm: String!
+  uid: Int!
+  host: Boolean!
 }
 
 type Query {
-  rtc(channel: String!, uid: Int!, role: AgoraRole, time: Int): String!
-  rtm(user: String!, time: Int): String!
+  joinChannel(channel: String!, password: String!): Session!
+  joinChannelWithPassphrase(passphrase: Passphrase): Session!
 }
 
 type Mutation {
   login(token: String!): String!
+  createChannel(channel: String!, hostPassword: String, viewPassword: String): Passphrase!
 }
