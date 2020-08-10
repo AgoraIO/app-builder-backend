@@ -1,9 +1,13 @@
 package models
 
+import (
+	"github.com/jinzhu/gorm"
+)
+
 // User model contains all relevant details of a particular user
 type User struct {
-	token  string
-	name   string
-	email  string
-	isHost bool
+	gorm.Model
+	Token string
+	Name  string
+	Email string
 }

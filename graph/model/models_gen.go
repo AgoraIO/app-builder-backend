@@ -2,49 +2,40 @@
 
 package model
 
-import (
-	"fmt"
-	"io"
-	"strconv"
-)
-
-type AgoraRole string
-
-const (
-	AgoraRolePublisher  AgoraRole = "Publisher"
-	AgoraRoleSubscriber AgoraRole = "Subscriber"
-)
-
-var AllAgoraRole = []AgoraRole{
-	AgoraRolePublisher,
-	AgoraRoleSubscriber,
+type Passphrase struct {
+	Host string `json:"host"`
+	View string `json:"view"`
 }
 
-func (e AgoraRole) IsValid() bool {
-	switch e {
-	case AgoraRolePublisher, AgoraRoleSubscriber:
-		return true
-	}
-	return false
+type PassphraseInput struct {
+	Host string `json:"host"`
+	View string `json:"view"`
 }
 
-func (e AgoraRole) String() string {
-	return string(e)
+type Password struct {
+	Host string `json:"host"`
+	View string `json:"view"`
 }
 
-func (e *AgoraRole) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = AgoraRole(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid AgoraRole", str)
-	}
-	return nil
+type PasswordInput struct {
+	Host string `json:"host"`
+	View string `json:"view"`
 }
 
-func (e AgoraRole) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+type Session struct {
+	Channel *string `json:"channel"`
+	Rtc     string  `json:"rtc"`
+	Rtm     string  `json:"rtm"`
+	UID     int     `json:"uid"`
+	IsHost  bool    `json:"isHost"`
+}
+
+type ShareResponse struct {
+	Password   *Password   `json:"password"`
+	Passphrase *Passphrase `json:"passphrase"`
+}
+
+type User struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }

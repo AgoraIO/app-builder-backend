@@ -8,5 +8,5 @@ import "github.com/samyak-jain/agora_backend/models"
 
 // Resolver is used for state management
 type Resolver struct {
-	db models.Datastore
+	DB *models.Database
 }

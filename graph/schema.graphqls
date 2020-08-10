@@ -1,6 +1,26 @@
 type Passphrase {
-  host String
-  view String
+  host: String!
+  view: String!
+}
+
+input PassphraseInput {
+  host: String!
+  view: String!
+}
+
+type Password {
+  host: String!
+  view: String!
+}
+
+input PasswordInput {
+  host: String!
+  view: String!
+}
+
+type ShareResponse {
+  password: Password
+  passphrase: Passphrase
 }
 
 type Session { 
@@ -8,15 +28,22 @@ type Session {
   rtc: String!
   rtm: String!
   uid: Int!
-  host: Boolean!
+  isHost: Boolean!
+}
+
+type User {
+  name: String!
+  email: String!
 }
 
 type Query {
   joinChannel(channel: String!, password: String!): Session!
-  joinChannelWithPassphrase(passphrase: Passphrase): Session!
+  joinChannelWithPassphrase(passphrase: PassphraseInput): Session!
+  share(channel: String!): ShareResponse!
+  getUser: User!
 }
 
 type Mutation {
-  login(token: String!): String!
-  createChannel(channel: String!, hostPassword: String, viewPassword: String): Passphrase!
+  createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true): ShareResponse!
+  updateUserName(name: String!): User!
 }

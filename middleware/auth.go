@@ -4,50 +4,37 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/samyak-jain/agora_backend/graph/model"
+	"github.com/samyak-jain/agora_backend/models"
 )
 
-// A private key for context that only this package can access. This is important
-// to prevent collisions between different context uses
-var userCtxKey = &contextKey{"user"}
+var userContextKey = &contextKey{"user"}
 
 type contextKey struct {
 	name string
 }
 
-// AuthMiddleware is a middleware for Authentication
-func AuthMiddleware() func(http.Handler) http.Handler {
+// AuthHandler is a middleware for authentication
+func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			c, err := r.Cookie("auth-cookie")
+			header := r.Header.Get("Authorization")
 
-			if err != nil || c == nil {
+			if header == "" {
 				next.ServeHTTP(w, r)
-				return
+			} else {
+				var user models.User
+				if db.Where("token = ?", header).First(&user).RecordNotFound() {
+					w.WriteHeader(http.StatusUnauthorized)
+				} else {
+					ctx := context.WithValue(r.Context(), userContextKey, user)
+					next.ServeHTTP(w, r.WithContext(ctx))
+				}
 			}
-
-			userId, err := validateAndGetUserID(c)
-			if err != nil {
-				http.Error(w, "Invalid cookie", http.StatusForbidden)
-				return
-			}
-
-			// get the user from the database
-			user := getUserByID(db, userId)
-
-			// put it in context
-			ctx := context.WithValue(r.Context(), userCtxKey, user)
-
-			// and call the next with our new context
-			r = r.WithContext(ctx)
-			next.ServeHTTP(w, r)
-
 		})
 	}
 }
 
-// ForContext finds the user from the context. REQUIRES Middleware to have run.
-func ForContext(ctx context.Context) *model.User {
-	raw, _ := ctx.Value(userCtxKey).(*model.User)
-	return raw
+// GetUserFromContext fetches the user from the context
+func GetUserFromContext(ctx context.Context) *models.User {
+	return ctx.Value(userContextKey).(*models.User)
 }

@@ -9,10 +9,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
-// Datastore represents an interface of any model
-type Datastore interface {
-}
-
 // Database contains a pointer to the database object
 type Database struct {
 	*gorm.DB
@@ -26,16 +22,5 @@ func CreateDB(dbURL string) (*Database, error) {
 	}
 
 	// TODO: Setup Production Migrations
-	// genericDB := db.DB()
-	// driver, err := postgres.WithInstance(genericDB, &postgres.Config{})
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// m, err := migrate.NewWithDatabaseInstance("file://", "postgres", driver)
-	// if err := m.Up(); err != nil {
-	// 	return nil, err
-	// }
-
 	return &Database{db}, nil
 }
