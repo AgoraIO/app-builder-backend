@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/samyak-jain/agora_backend/models"
 	uuid "github.com/satori/go.uuid"
@@ -31,7 +32,7 @@ type Router struct {
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
-func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*string, error) {
+func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*string, *int, error) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Panic(err)
@@ -44,13 +45,13 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 	decodedState, err := url.QueryUnescape(state)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, err
+		return nil, nil, err
 	}
 
 	stateURL, err := url.Parse(decodedState)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, err
+		return nil, nil, err
 	}
 
 	redirect := stateURL.Query().Get("redirect")
@@ -72,45 +73,51 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 		oauthConfig = &oauth2.Config{}
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, err
+		return nil, nil, err
 	}
 
 	token, err := oauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
+		return nil, nil, err
 	}
 
 	response, err := http.Get(userInfoURL + token.AccessToken)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
+		return nil, nil, err
 	}
 	defer response.Body.Close()
 
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
+		return nil, nil, err
 	}
 
 	var user GoogleOAuthUser
 	err = json.Unmarshal(contents, &user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !user.VerifiedEmail {
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, errors.New("Email is not verified")
+		return nil, nil, errors.New("Email is not verified")
+	}
+
+	bearerToken, err := strconv.Atoi(uuid.NewV4().String())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, nil, err
 	}
 
 	db.Save(&models.User{
 		Name:  user.GivenName,
-		Token: uuid.NewV4().String(),
+		Token: bearerToken,
 		Email: user.Email,
 	})
 
-	return &redirect, nil
+	return &redirect, &bearerToken, nil
 }

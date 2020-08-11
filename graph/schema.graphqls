@@ -3,11 +3,6 @@ type Passphrase {
   view: String!
 }
 
-input PassphraseInput {
-  host: String!
-  view: String!
-}
-
 type Password {
   host: String!
   view: String!
@@ -38,7 +33,7 @@ type User {
 
 type Query {
   joinChannel(channel: String!, password: String!): Session!
-  joinChannelWithPassphrase(passphrase: PassphraseInput): Session!
+  joinChannelWithPassphrase(passphrase: String!): Session!
   share(channel: String!): ShareResponse!
   getUser: User!
 }

@@ -7,11 +7,6 @@ type Passphrase struct {
 	View string `json:"view"`
 }
 
-type PassphraseInput struct {
-	Host string `json:"host"`
-	View string `json:"view"`
-}
-
 type Password struct {
 	Host string `json:"host"`
 	View string `json:"view"`

@@ -61,7 +61,7 @@ type ComplexityRoot struct {
 	Query struct {
 		GetUser                   func(childComplexity int) int
 		JoinChannel               func(childComplexity int, channel string, password string) int
-		JoinChannelWithPassphrase func(childComplexity int, passphrase *model.PassphraseInput) int
+		JoinChannelWithPassphrase func(childComplexity int, passphrase string) int
 		Share                     func(childComplexity int, channel string) int
 	}
 
@@ -90,7 +90,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	JoinChannel(ctx context.Context, channel string, password string) (*model.Session, error)
-	JoinChannelWithPassphrase(ctx context.Context, passphrase *model.PassphraseInput) (*model.Session, error)
+	JoinChannelWithPassphrase(ctx context.Context, passphrase string) (*model.Session, error)
 	Share(ctx context.Context, channel string) (*model.ShareResponse, error)
 	GetUser(ctx context.Context) (*model.User, error)
 }
@@ -191,7 +191,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.JoinChannelWithPassphrase(childComplexity, args["passphrase"].(*model.PassphraseInput)), true
+		return e.complexity.Query.JoinChannelWithPassphrase(childComplexity, args["passphrase"].(string)), true
 
 	case "Query.share":
 		if e.complexity.Query.Share == nil {
@@ -337,11 +337,6 @@ var sources = []*ast.Source{
   view: String!
 }
 
-input PassphraseInput {
-  host: String!
-  view: String!
-}
-
 type Password {
   host: String!
   view: String!
@@ -372,7 +367,7 @@ type User {
 
 type Query {
   joinChannel(channel: String!, password: String!): Session!
-  joinChannelWithPassphrase(passphrase: PassphraseInput): Session!
+  joinChannelWithPassphrase(passphrase: String!): Session!
   share(channel: String!): ShareResponse!
   getUser: User!
 }
@@ -449,9 +444,9 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_joinChannelWithPassphrase_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *model.PassphraseInput
+	var arg0 string
 	if tmp, ok := rawArgs["passphrase"]; ok {
-		arg0, err = ec.unmarshalOPassphraseInput2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphraseInput(ctx, tmp)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -815,7 +810,7 @@ func (ec *executionContext) _Query_joinChannelWithPassphrase(ctx context.Context
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().JoinChannelWithPassphrase(rctx, args["passphrase"].(*model.PassphraseInput))
+		return ec.resolvers.Query().JoinChannelWithPassphrase(rctx, args["passphrase"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2328,30 +2323,6 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputPassphraseInput(ctx context.Context, obj interface{}) (model.PassphraseInput, error) {
-	var it model.PassphraseInput
-	var asMap = obj.(map[string]interface{})
-
-	for k, v := range asMap {
-		switch k {
-		case "host":
-			var err error
-			it.Host, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "view":
-			var err error
-			it.View, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputPasswordInput(ctx context.Context, obj interface{}) (model.PasswordInput, error) {
 	var it model.PasswordInput
 	var asMap = obj.(map[string]interface{})
@@ -3259,18 +3230,6 @@ func (ec *executionContext) marshalOPassphrase2ᚖgithubᚗcomᚋsamyakᚑjain�
 		return graphql.Null
 	}
 	return ec._Passphrase(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOPassphraseInput2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphraseInput(ctx context.Context, v interface{}) (model.PassphraseInput, error) {
-	return ec.unmarshalInputPassphraseInput(ctx, v)
-}
-
-func (ec *executionContext) unmarshalOPassphraseInput2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphraseInput(ctx context.Context, v interface{}) (*model.PassphraseInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalOPassphraseInput2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphraseInput(ctx, v)
-	return &res, err
 }
 
 func (ec *executionContext) marshalOPassword2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassword(ctx context.Context, sel ast.SelectionSet, v model.Password) graphql.Marshaler {

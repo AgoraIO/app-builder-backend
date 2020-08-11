@@ -8,8 +8,10 @@ import (
 type Channel struct {
 	gorm.Model
 	Name             string
+	UsePassword      bool
 	HostPassword     string
 	ViewerPassword   string
+	UsePassphrase    bool
 	HostPassphrase   string
 	ViewerPassphrase string
 	Creator          User

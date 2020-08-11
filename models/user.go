@@ -7,7 +7,7 @@ import (
 // User model contains all relevant details of a particular user
 type User struct {
 	gorm.Model
-	Token string
+	Token int `gorm:"primary_key"`
 	Name  string
 	Email string
 }

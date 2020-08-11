@@ -13,7 +13,7 @@ import (
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/utils"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool) (*model.ShareResponse, error) {
@@ -25,9 +25,17 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 	var hostPhrase string
 	var viewPhrase string
 
+	usephrase := false
+	usepass := false
+
 	if *enableLink {
+		usephrase = true
 		hostPhrase = uuid.NewV4().String()
 		viewPhrase = uuid.NewV4().String()
+	}
+
+	if password != nil {
+		usepass = true
 	}
 
 	if !r.DB.Where("name = ?", channel).RecordNotFound() {
@@ -36,8 +44,10 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 
 	r.DB.NewRecord(models.Channel{
 		Name:             channel,
+		UsePassword:      usepass,
 		HostPassword:     password.Host,
 		ViewerPassword:   password.View,
+		UsePassphrase:    usephrase,
 		HostPassphrase:   hostPhrase,
 		ViewerPassphrase: viewPhrase,
 		Creator:          *authUser,
@@ -72,6 +82,15 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 }
 
 func (r *queryResolver) JoinChannel(ctx context.Context, channel string, password string) (*model.Session, error) {
+	var channelData models.Channel
+	if err := r.DB.Where("name = ?", channel).First(&channelData).Error; err != nil {
+		return nil, err
+	}
+
+	if !channelData.UsePassword {
+		return nil, errors.New("Cannot join using password")
+	}
+
 	uid := int(rand.Uint32())
 	rtcToken, err := utils.GetRtcToken(channel, uid)
 	if err != nil {
@@ -80,11 +99,6 @@ func (r *queryResolver) JoinChannel(ctx context.Context, channel string, passwor
 
 	rtmToken, err := utils.GetRtmToken(string(uid))
 	if err != nil {
-		return nil, err
-	}
-
-	var channelData models.Channel
-	if err := r.DB.Where("name = ?", channel).First(channelData).Error; err != nil {
 		return nil, err
 	}
 
@@ -106,9 +120,14 @@ func (r *queryResolver) JoinChannel(ctx context.Context, channel string, passwor
 	}, nil
 }
 
-func (r *queryResolver) JoinChannelWithPassphrase(ctx context.Context, passphrase *model.PassphraseInput) (*model.Session, error) {
+func (r *queryResolver) JoinChannelWithPassphrase(ctx context.Context, passphrase string) (*model.Session, error) {
 	var channelData models.Channel
 	var host bool
+
+	if passphrase == "" {
+		return nil, errors.New("Passphrase cannot be empty")
+	}
+
 	if r.DB.Where("host_passphrase = ?", passphrase).First(channelData).RecordNotFound() {
 		if r.DB.Where("viewer_passphrase = ?", passphrase).First(channelData).RecordNotFound() {
 			return nil, errors.New("Invalid passphrase")
@@ -117,6 +136,10 @@ func (r *queryResolver) JoinChannelWithPassphrase(ctx context.Context, passphras
 		host = false
 	} else {
 		host = true
+	}
+
+	if !channelData.UsePassphrase {
+		return nil, errors.New("Cannot login using passphrase")
 	}
 
 	uid := int(rand.Uint32())
