@@ -57,8 +57,6 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 	var oauthConfig *oauth2.Config
 	var userInfoURL string
 
-	log.Print(code)
-
 	switch site := parsedState.Get("site"); site {
 	case "google":
 		oauthConfig = &oauth2.Config{
@@ -77,7 +75,6 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 		return nil, nil, err
 	}
 
-	log.Print(oauthConfig)
 	token, err := oauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -110,8 +107,6 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 	}
 
 	bearerToken := uuid.NewV4().String()
-
-	log.Printf("Token %d", bearerToken)
 
 	db.Save(&models.User{
 		Name:  user.GivenName,

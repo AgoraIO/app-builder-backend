@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 )
 
 // WebOAuthHandler is a REST route that is called when the oauth provider redirects to here and provides the code
@@ -23,9 +24,7 @@ func (o *Router) WebOAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := newURL.Query()
-	query.Set("token", *token)
-	newURL.RawQuery = query.Encode()
+	newURL.Path = path.Join(newURL.Path, *token)
 
 	http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
 }

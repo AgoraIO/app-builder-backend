@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/samyak-jain/agora_backend/models"
 )
@@ -22,8 +23,11 @@ func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 			if header == "" {
 				next.ServeHTTP(w, r)
 			} else {
+				splitToken := strings.Split(header, "Bearer ")
+				token := splitToken[1]
+
 				var user models.User
-				if db.Where("token = ?", header).First(&user).RecordNotFound() {
+				if db.Where("token = ?", token).First(&user).RecordNotFound() {
 					w.WriteHeader(http.StatusUnauthorized)
 				} else {
 					ctx := context.WithValue(r.Context(), userContextKey, user)
