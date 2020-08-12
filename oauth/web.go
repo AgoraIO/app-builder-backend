@@ -24,7 +24,7 @@ func (o *Router) WebOAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := newURL.Query()
-	query.Set("token", string(*token))
+	query.Set("token", *token)
 	newURL.RawQuery = query.Encode()
 
 	http.Redirect(w, r, newURL.String(), http.StatusSeeOther)

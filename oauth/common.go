@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/samyak-jain/agora_backend/models"
 	uuid "github.com/satori/go.uuid"
@@ -32,7 +31,7 @@ type Router struct {
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
-func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*string, *int, error) {
+func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*string, *string, error) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Panic(err)
@@ -48,24 +47,26 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 		return nil, nil, err
 	}
 
-	stateURL, err := url.Parse(decodedState)
+	parsedState, err := url.ParseQuery(decodedState)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return nil, nil, err
 	}
 
-	redirect := stateURL.Query().Get("redirect")
+	redirect := parsedState.Get("redirect")
 	var oauthConfig *oauth2.Config
 	var userInfoURL string
 
-	switch site := stateURL.Query().Get("site"); site {
+	log.Print(code)
+
+	switch site := parsedState.Get("site"); site {
 	case "google":
 		oauthConfig = &oauth2.Config{
 			ClientID:     viper.GetString("CLIENT_ID"),
 			ClientSecret: viper.GetString("CLIENT_SECRET"),
-			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile"},
+			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
 			Endpoint:     google.Endpoint,
-			RedirectURL:  "http://localhost:8080",
+			RedirectURL:  "https://infinite-dawn-92521.herokuapp.com/oauth/web",
 		}
 		userInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 
@@ -76,6 +77,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 		return nil, nil, err
 	}
 
+	log.Print(oauthConfig)
 	token, err := oauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -107,11 +109,9 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 		return nil, nil, errors.New("Email is not verified")
 	}
 
-	bearerToken, err := strconv.Atoi(uuid.NewV4().String())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return nil, nil, err
-	}
+	bearerToken := uuid.NewV4().String()
+
+	log.Printf("Token %d", bearerToken)
 
 	db.Save(&models.User{
 		Name:  user.GivenName,
