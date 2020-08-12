@@ -16,6 +16,5 @@ func main() {
 
 	defer db.Close()
 
-	db.DropTableIfExists(&models.User{})
-	db.CreateTable(&models.User{})
+	db.AutoMigrate(&models.User{}, &models.Channel{})
 }
