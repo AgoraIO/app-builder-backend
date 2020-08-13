@@ -108,11 +108,16 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 
 	bearerToken := uuid.NewV4().String()
 
-	db.Save(&models.User{
-		Name:  user.GivenName,
-		Token: bearerToken,
-		Email: user.Email,
-	})
+	var userData models.User
+	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
+		db.NewRecord(&models.User{
+			Name:   user.GivenName,
+			Email:  user.Email,
+			Tokens: []models.Token{{TokenID: bearerToken}},
+		})
+	} else {
+		db.Model(&userData).Association("Tokens").Append(models.Token{TokenID: bearerToken})
+	}
 
 	return &redirect, &bearerToken, nil
 }

@@ -26,13 +26,18 @@ func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 				splitToken := strings.Split(header, "Bearer ")
 				token := splitToken[1]
 
+				var tokenData models.Token
 				var user models.User
-				if db.Where("token = ?", token).First(&user).RecordNotFound() {
+
+				if db.Where("token_id = ?", token).First(&tokenData).RecordNotFound() {
 					w.WriteHeader(http.StatusUnauthorized)
+				} else if err := db.Where("email = ?", tokenData.UserEmail).First(&user).Error; err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
 				} else {
 					ctx := context.WithValue(r.Context(), userContextKey, user)
 					next.ServeHTTP(w, r.WithContext(ctx))
 				}
+
 			}
 		})
 	}

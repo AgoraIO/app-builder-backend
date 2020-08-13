@@ -16,5 +16,5 @@ func main() {
 
 	defer db.Close()
 
-	db.AutoMigrate(&models.User{}, &models.Channel{})
+	db.AutoMigrate(&models.User{}, &models.Channel{}, &models.Token{})
 }

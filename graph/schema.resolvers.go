@@ -70,7 +70,7 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 		return nil, errors.New("Invalid Token")
 	}
 
-	user := &models.User{Token: authUser.Token}
+	user := &models.User{Email: authUser.Email}
 	if err := r.DB.Model(&user).Update("name", name).Error; err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (r *queryResolver) Share(ctx context.Context, channel string) (*model.Share
 		return nil, err
 	}
 
-	if userData.Token != authUser.Token {
+	if userData.Email != authUser.Email {
 		return nil, errors.New("Unauthorized Access")
 	}
 
