@@ -31,7 +31,7 @@ type Router struct {
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
-func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*string, *string, error) {
+func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platform string) (*string, *string, error) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Panic(err)
@@ -64,7 +64,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database) (*stri
 			ClientSecret: viper.GetString("CLIENT_SECRET"),
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
 			Endpoint:     google.Endpoint,
-			RedirectURL:  "https://infinite-dawn-92521.herokuapp.com/oauth/web",
+			RedirectURL:  "https://infinite-dawn-92521.herokuapp.com/oauth/" + platform,
 		}
 		userInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 

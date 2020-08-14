@@ -31,11 +31,7 @@ func main() {
 	}
 
 	router := chi.NewRouter()
-	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-		Debug:            true,
-	}).Handler)
+	router.Use(cors.Default().Handler)
 	router.Use(middleware.AuthHandler(database))
 
 	config := generated.Config{
@@ -48,8 +44,8 @@ func main() {
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
 	router.Handle("/oauth/web", http.HandlerFunc(oauthHandler.WebOAuthHandler))
-	router.Handle("/oauth/desktop", http.HandlerFunc(oauthHandler.NativeOAuthHandler))
-	router.Handle("/oauth/mobile", http.HandlerFunc(oauthHandler.NativeOAuthHandler))
+	router.Handle("/oauth/desktop", http.HandlerFunc(oauthHandler.DesktopOAuthHandler))
+	router.Handle("/oauth/mobile", http.HandlerFunc(oauthHandler.MobileOAuthHandler))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, router))
