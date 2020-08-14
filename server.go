@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/rs/cors"
 	"github.com/samyak-jain/agora_backend/oauth"
 
 	"github.com/samyak-jain/agora_backend/middleware"
@@ -30,6 +31,11 @@ func main() {
 	}
 
 	router := chi.NewRouter()
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		Debug:            true,
+	}).Handler)
 	router.Use(middleware.AuthHandler(database))
 
 	config := generated.Config{
