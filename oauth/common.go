@@ -111,7 +111,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 
 	var userData models.User
 	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
-		db.NewRecord(&models.User{
+		db.Create(&models.User{
 			Name:  user.GivenName,
 			Email: user.Email,
 			Tokens: []models.Token{{
