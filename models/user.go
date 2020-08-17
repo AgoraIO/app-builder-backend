@@ -15,6 +15,18 @@ type User struct {
 // Token stores the token of a user
 type Token struct {
 	gorm.Model
-	TokenID   string
-	UserEmail string
+	TokenID    string
+	UserEmail  string
+	Expiration int64
+}
+
+// GetAllTokens fetches the token id of all the tokens of that user
+func (u *User) GetAllTokens() []string {
+	var tokens []string
+
+	for index := range u.Tokens {
+		tokens = append(tokens, u.Tokens[index].TokenID)
+	}
+
+	return tokens
 }

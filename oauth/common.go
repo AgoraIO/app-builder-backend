@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/samyak-jain/agora_backend/models"
 	uuid "github.com/satori/go.uuid"
@@ -111,9 +112,12 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	var userData models.User
 	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
 		db.NewRecord(&models.User{
-			Name:   user.GivenName,
-			Email:  user.Email,
-			Tokens: []models.Token{{TokenID: bearerToken}},
+			Name:  user.GivenName,
+			Email: user.Email,
+			Tokens: []models.Token{{
+				TokenID:    bearerToken,
+				Expiration: time.Now().Add(time.Hour * 240).Unix(),
+			}},
 		})
 	} else {
 		db.Model(&userData).Association("Tokens").Append(models.Token{TokenID: bearerToken})

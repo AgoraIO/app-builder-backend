@@ -44,8 +44,10 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateChannel  func(childComplexity int, channel string, password *model.PasswordInput, enableLink *bool) int
-		UpdateUserName func(childComplexity int, name string) int
+		CreateChannel     func(childComplexity int, channel string, password *model.PasswordInput, enableLink *bool) int
+		LogoutAllSessions func(childComplexity int) int
+		LogoutSession     func(childComplexity int, token string) int
+		UpdateUserName    func(childComplexity int, name string) int
 	}
 
 	Passphrase struct {
@@ -59,6 +61,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		GetSessions               func(childComplexity int) int
 		GetUser                   func(childComplexity int) int
 		JoinChannel               func(childComplexity int, channel string, password string) int
 		JoinChannelWithPassphrase func(childComplexity int, passphrase string) int
@@ -87,12 +90,15 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool) (*model.ShareResponse, error)
 	UpdateUserName(ctx context.Context, name string) (*model.User, error)
+	LogoutSession(ctx context.Context, token string) ([]string, error)
+	LogoutAllSessions(ctx context.Context) (*string, error)
 }
 type QueryResolver interface {
 	JoinChannel(ctx context.Context, channel string, password string) (*model.Session, error)
 	JoinChannelWithPassphrase(ctx context.Context, passphrase string) (*model.Session, error)
 	Share(ctx context.Context, channel string) (*model.ShareResponse, error)
 	GetUser(ctx context.Context) (*model.User, error)
+	GetSessions(ctx context.Context) ([]string, error)
 }
 
 type executableSchema struct {
@@ -121,6 +127,25 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreateChannel(childComplexity, args["channel"].(string), args["password"].(*model.PasswordInput), args["enableLink"].(*bool)), true
+
+	case "Mutation.logoutAllSessions":
+		if e.complexity.Mutation.LogoutAllSessions == nil {
+			break
+		}
+
+		return e.complexity.Mutation.LogoutAllSessions(childComplexity), true
+
+	case "Mutation.logoutSession":
+		if e.complexity.Mutation.LogoutSession == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_logoutSession_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.LogoutSession(childComplexity, args["token"].(string)), true
 
 	case "Mutation.updateUserName":
 		if e.complexity.Mutation.UpdateUserName == nil {
@@ -161,6 +186,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Password.View(childComplexity), true
+
+	case "Query.getSessions":
+		if e.complexity.Query.GetSessions == nil {
+			break
+		}
+
+		return e.complexity.Query.GetSessions(childComplexity), true
 
 	case "Query.getUser":
 		if e.complexity.Query.GetUser == nil {
@@ -370,11 +402,14 @@ type Query {
   joinChannelWithPassphrase(passphrase: String!): Session!
   share(channel: String!): ShareResponse!
   getUser: User!
+  getSessions: [String!]
 }
 
 type Mutation {
   createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true): ShareResponse!
   updateUserName(name: String!): User!
+  logoutSession(token: String!): [String!]
+  logoutAllSessions: String
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -410,6 +445,20 @@ func (ec *executionContext) field_Mutation_createChannel_args(ctx context.Contex
 		}
 	}
 	args["enableLink"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_logoutSession_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["token"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["token"] = arg0
 	return args, nil
 }
 
@@ -607,6 +656,75 @@ func (ec *executionContext) _Mutation_updateUserName(ctx context.Context, field 
 	res := resTmp.(*model.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_logoutSession(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_logoutSession_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().LogoutSession(rctx, args["token"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_logoutAllSessions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().LogoutAllSessions(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Passphrase_host(ctx context.Context, field graphql.CollectedField, obj *model.Passphrase) (ret graphql.Marshaler) {
@@ -900,6 +1018,37 @@ func (ec *executionContext) _Query_getUser(ctx context.Context, field graphql.Co
 	res := resTmp.(*model.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_getSessions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetSessions(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2380,6 +2529,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "logoutSession":
+			out.Values[i] = ec._Mutation_logoutSession(ctx, field)
+		case "logoutAllSessions":
+			out.Values[i] = ec._Mutation_logoutAllSessions(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2524,6 +2677,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			})
+		case "getSessions":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getSessions(ctx, field)
 				return res
 			})
 		case "__type":
@@ -3261,6 +3425,38 @@ func (ec *executionContext) unmarshalOString2string(ctx context.Context, v inter
 
 func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	return graphql.MarshalString(v)
+}
+
+func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

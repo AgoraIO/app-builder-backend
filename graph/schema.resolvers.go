@@ -88,6 +88,42 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 	}, nil
 }
 
+func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]string, error) {
+	authUser := middleware.GetUserFromContext(ctx)
+	if authUser == nil {
+		return nil, errors.New("Invalid Token")
+	}
+
+	tokenIndex := -1
+
+	for index := range authUser.Tokens {
+		if authUser.Tokens[index].TokenID == token {
+			tokenIndex = index
+		}
+	}
+
+	if tokenIndex == -1 {
+		return nil, errors.New("Invalid token")
+	}
+
+	r.DB.Delete(&models.Token{
+		TokenID: token,
+	})
+
+	return authUser.GetAllTokens(), nil
+}
+
+func (r *mutationResolver) LogoutAllSessions(ctx context.Context) (*string, error) {
+	authUser := middleware.GetUserFromContext(ctx)
+	if authUser == nil {
+		return nil, errors.New("Invalid Token")
+	}
+
+	r.DB.Where("user_email = ?", authUser.Email).Delete(models.Token{})
+
+	return nil, nil
+}
+
 func (r *queryResolver) JoinChannel(ctx context.Context, channel string, password string) (*model.Session, error) {
 	var channelData models.Channel
 	if err := r.DB.Where("name = ?", channel).First(&channelData).Error; err != nil {
@@ -202,6 +238,15 @@ func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
 		Name:  authUser.Name,
 		Email: authUser.Email,
 	}, nil
+}
+
+func (r *queryResolver) GetSessions(ctx context.Context) ([]string, error) {
+	authUser := middleware.GetUserFromContext(ctx)
+	if authUser == nil {
+		return nil, errors.New("Invalid Token")
+	}
+
+	return authUser.GetAllTokens(), nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

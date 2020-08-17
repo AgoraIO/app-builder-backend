@@ -36,9 +36,12 @@ type Query {
   joinChannelWithPassphrase(passphrase: String!): Session!
   share(channel: String!): ShareResponse!
   getUser: User!
+  getSessions: [String!]
 }
 
 type Mutation {
   createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true): ShareResponse!
   updateUserName(name: String!): User!
+  logoutSession(token: String!): [String!]
+  logoutAllSessions: String
 }
