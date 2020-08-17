@@ -116,7 +116,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 			Email: user.Email,
 			Tokens: []models.Token{{
 				TokenID:    bearerToken,
-				Expiration: time.Now().Add(time.Hour * 240),
+				Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
 			}},
 		})
 	} else {

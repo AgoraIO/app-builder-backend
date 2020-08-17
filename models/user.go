@@ -1,8 +1,6 @@
 package models
 
 import (
-	"time"
-
 	"github.com/jinzhu/gorm"
 )
 
@@ -19,7 +17,7 @@ type Token struct {
 	gorm.Model
 	TokenID    string
 	UserEmail  string
-	Expiration time.Time
+	Expiration string
 }
 
 // GetAllTokens fetches the token id of all the tokens of that user

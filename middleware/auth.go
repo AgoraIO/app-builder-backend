@@ -44,7 +44,14 @@ func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 				} else if err := db.Where("email = ?", tokenData.UserEmail).First(&user).Error; err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 				} else {
-					if tokenData.Expiration.Before(time.Now()) {
+
+					exTime, err := time.Parse(time.UnixDate, tokenData.Expiration)
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+
+					if exTime.Before(time.Now()) {
 						w.WriteHeader(http.StatusUnauthorized)
 						return
 					}
