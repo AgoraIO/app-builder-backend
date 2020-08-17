@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
 
@@ -18,6 +19,14 @@ type contextKey struct {
 func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Print(r.Method)
+
+			if r.Method == "OPTIONS" {
+
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			header := r.Header.Get("Authorization")
 
 			if header == "" {
@@ -34,7 +43,7 @@ func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 				} else if err := db.Where("email = ?", tokenData.UserEmail).First(&user).Error; err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 				} else {
-					ctx := context.WithValue(r.Context(), userContextKey, user)
+					ctx := context.WithValue(r.Context(), userContextKey, &user)
 					next.ServeHTTP(w, r.WithContext(ctx))
 				}
 

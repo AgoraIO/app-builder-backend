@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 
 	"github.com/samyak-jain/agora_backend/graph/generated"
@@ -22,6 +23,11 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 		return nil, errors.New("Invalid Token")
 	}
 
+	var channelData models.Channel
+	if !r.DB.Where("name = ?", channel).First(&channelData).RecordNotFound() {
+		return nil, errors.New("Channel name already taken")
+	}
+
 	var hostPhrase string
 	var viewPhrase string
 
@@ -36,13 +42,11 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 
 	if password != nil {
 		usepass = true
+	} else {
+		password = &model.PasswordInput{Host: "", View: ""}
 	}
 
-	if !r.DB.Where("name = ?", channel).RecordNotFound() {
-		return nil, errors.New("Channel name already taken")
-	}
-
-	r.DB.NewRecord(models.Channel{
+	newChannel := &models.Channel{
 		Name:             channel,
 		UsePassword:      usepass,
 		HostPassword:     password.Host,
@@ -51,7 +55,10 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 		HostPassphrase:   hostPhrase,
 		ViewerPassphrase: viewPhrase,
 		Creator:          *authUser,
-	})
+	}
+
+	r.DB.Create(newChannel)
+	// r.DB.Model(newChannel).Association("Creator").Append(authUser)
 
 	passwordResponse := model.Password(*password)
 
@@ -97,7 +104,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, channel string, passwor
 		return nil, err
 	}
 
-	rtmToken, err := utils.GetRtmToken(string(uid))
+	rtmToken, err := utils.GetRtmToken(fmt.Sprint(uid))
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +135,8 @@ func (r *queryResolver) JoinChannelWithPassphrase(ctx context.Context, passphras
 		return nil, errors.New("Passphrase cannot be empty")
 	}
 
-	if r.DB.Where("host_passphrase = ?", passphrase).First(channelData).RecordNotFound() {
-		if r.DB.Where("viewer_passphrase = ?", passphrase).First(channelData).RecordNotFound() {
+	if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+		if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
 			return nil, errors.New("Invalid passphrase")
 		}
 
@@ -148,7 +155,7 @@ func (r *queryResolver) JoinChannelWithPassphrase(ctx context.Context, passphras
 		return nil, err
 	}
 
-	rtmToken, err := utils.GetRtmToken(string(uid))
+	rtmToken, err := utils.GetRtmToken(fmt.Sprint(uid))
 	if err != nil {
 		return nil, err
 	}
