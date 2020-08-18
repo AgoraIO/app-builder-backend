@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/samyak-jain/agora_backend/pstn"
+
 	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/middleware"
@@ -35,6 +37,11 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 
 	if *enablePstn {
 		pstnResult = &pstnString
+		err := pstn.SetPSTN(channel)
+
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		pstnResult = nil
 	}

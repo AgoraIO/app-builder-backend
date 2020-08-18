@@ -1,14 +1,13 @@
 package pstn
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 
 	"github.com/samyak-jain/agora_backend/utils"
 )
@@ -59,27 +58,21 @@ func InboundHandler(w http.ResponseWriter, r *http.Request) {
 		"commands":[
 			{
 				"joinAgora": {
-					"app": "{{.AppID}}",
-					"channel": "{{.Channel}}",
-					"channelKey": "{{.Token}}",
-					"uid": {{.UID}}
+					"app": "{{AppID}}",
+					"channel": "{{Channel}}",
+					"channelKey": "{{Token}}",
+					"uid": {{UID}}
 				}
 			}
 		]
 	}`
 
-	tmpl, err := template.New("test").Parse(responseString)
-	if err != nil {
-		panic(err)
-	}
+	finalResult := strings.Replace(responseString, "{{AppID}}", response.AppID, 1)
+	finalResult = strings.Replace(finalResult, "{{Channel}}", response.Channel, 1)
+	finalResult = strings.Replace(finalResult, "{{Token}}", response.Token, 1)
+	finalResult = strings.Replace(finalResult, "{{UID}}", response.UID, 1)
 
-	var templateResult bytes.Buffer
-	err = tmpl.Execute(&templateResult, response)
-	if err != nil {
-		panic(err)
-	}
-
-	byt := []byte(templateResult.String())
+	byt := []byte(finalResult)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(byt)

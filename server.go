@@ -59,6 +59,18 @@ func main() {
 	oauthHandler := oauth.Router{DB: database}
 
 	router.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	router.Handle("/error", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Print(r.Method)
+		log.Print(r.Header)
+		log.Print(r.URL)
+		err := r.ParseForm()
+		if err != nil {
+			log.Print(err)
+		} else {
+			log.Print(r.PostForm)
+		}
+		log.Print(r.Body)
+	}))
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
 	router.Handle("/oauth/web", http.HandlerFunc(oauthHandler.WebOAuthHandler))
