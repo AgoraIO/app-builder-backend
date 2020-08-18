@@ -3,10 +3,14 @@ package pstn
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
+
+	"github.com/samyak-jain/agora_backend/utils"
 )
 
 // ResponseData contains all details needed in response
@@ -39,6 +43,16 @@ func InboundHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+
+	channelName := response.Channel
+	uid := int(rand.Uint32())
+	tokenData, err := utils.GetRtcToken(channelName, uid)
+	if err != nil {
+		panic(err)
+	}
+
+	response.Token = tokenData
+	response.UID = fmt.Sprint(uid)
 
 	responseString := `{
 		"merge":true,
