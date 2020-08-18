@@ -5,9 +5,8 @@ import (
 
 	"github.com/samyak-jain/agora_backend/utils/rtctoken"
 	"github.com/samyak-jain/agora_backend/utils/rtmtoken"
+	"github.com/spf13/viper"
 )
-
-var config AgoraConfig = GetAgoraConfig()
 
 // GetRtcToken generates token for Agora RTC SDK
 func GetRtcToken(channel string, uid int) (string, error) {
@@ -16,7 +15,7 @@ func GetRtcToken(channel string, uid int) (string, error) {
 	currentTimestamp := uint32(time.Now().UTC().Unix())
 	expireTimestamp := currentTimestamp + 86400
 
-	return rtctoken.BuildTokenWithUID(config.AppID, config.AppCertificate, channel, uint32(uid), RtcRole, expireTimestamp)
+	return rtctoken.BuildTokenWithUID(viper.GetString("appID"), viper.GetString("appCertificate"), channel, uint32(uid), RtcRole, expireTimestamp)
 }
 
 // GetRtmToken generates a token for Agora RTM SDK
@@ -25,5 +24,5 @@ func GetRtmToken(user string) (string, error) {
 	currentTimestamp := uint32(time.Now().UTC().Unix())
 	expireTimestamp := currentTimestamp + 86400
 
-	return rtmtoken.BuildToken(config.AppID, config.AppCertificate, user, rtmtoken.RoleRtmUser, expireTimestamp)
+	return rtmtoken.BuildToken(viper.GetString("appID"), viper.GetString("appCertificate"), user, rtmtoken.RoleRtmUser, expireTimestamp)
 }

@@ -15,7 +15,7 @@ import (
 
 // ResponseData contains all details needed in response
 type ResponseData struct {
-	AppID   string
+	AppID   string `json:""`
 	Channel string
 	Token   string
 	UID     string
@@ -62,7 +62,7 @@ func InboundHandler(w http.ResponseWriter, r *http.Request) {
 					"app": "{{.AppID}}",
 					"channel": "{{.Channel}}",
 					"channelKey": "{{.Token}}",
-					"uid": {{.Uid}}
+					"uid": {{.UID}}
 				}
 			}
 		]

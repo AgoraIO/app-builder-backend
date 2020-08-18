@@ -82,7 +82,7 @@
                             {
                                 "fetchAudioMinDuration":6000,
                                 "fetchAudioUrl":"ringing.wav",
-                                "url":"agoraInbound.php",
+                                "url":"https://infinite-dawn-92521.herokuapp.com/pstnHandle",
                                 "type":"application/x-www-form-urlencoded",
                                 "method":"GET",
                                 "data":

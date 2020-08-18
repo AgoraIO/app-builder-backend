@@ -38,11 +38,3 @@ func GetPORT() string {
 func GetDBURL() string {
 	return viper.GetString("DATABASE_URL")
 }
-
-// GetAgoraConfig returns an AgoraConfig based on what's present in the envfile
-func GetAgoraConfig() AgoraConfig {
-	return AgoraConfig{
-		AppID:          viper.GetString("appID"),
-		AppCertificate: viper.GetString("appCertificate"),
-	}
-}
