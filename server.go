@@ -1,9 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/samyak-jain/agora_backend/pstn"
 
 	"github.com/rs/cors"
 	"github.com/samyak-jain/agora_backend/middleware"
@@ -58,15 +59,12 @@ func main() {
 	oauthHandler := oauth.Router{DB: database}
 
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	router.Handle("/test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "success")
-
-		log.Print(w.Header())
-	}))
 	router.Handle("/query", srv)
 	router.Handle("/oauth/web", http.HandlerFunc(oauthHandler.WebOAuthHandler))
 	router.Handle("/oauth/desktop", http.HandlerFunc(oauthHandler.DesktopOAuthHandler))
 	router.Handle("/oauth/mobile", http.HandlerFunc(oauthHandler.MobileOAuthHandler))
+	router.Handle("/pstnHandle", http.HandlerFunc(pstn.InboundHandler))
+	router.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, router))

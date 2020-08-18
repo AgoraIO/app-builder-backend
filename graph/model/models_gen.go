@@ -28,6 +28,7 @@ type Session struct {
 type ShareResponse struct {
 	Password   *Password   `json:"password"`
 	Passphrase *Passphrase `json:"passphrase"`
+	Pstn       *string     `json:"pstn"`
 }
 
 type User struct {

@@ -16,6 +16,7 @@ input PasswordInput {
 type ShareResponse {
   password: Password
   passphrase: Passphrase
+  pstn: String
 }
 
 type Session { 
@@ -40,7 +41,7 @@ type Query {
 }
 
 type Mutation {
-  createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true): ShareResponse!
+  createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String

@@ -44,7 +44,7 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateChannel     func(childComplexity int, channel string, password *model.PasswordInput, enableLink *bool) int
+		CreateChannel     func(childComplexity int, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) int
 		LogoutAllSessions func(childComplexity int) int
 		LogoutSession     func(childComplexity int, token string) int
 		UpdateUserName    func(childComplexity int, name string) int
@@ -79,6 +79,7 @@ type ComplexityRoot struct {
 	ShareResponse struct {
 		Passphrase func(childComplexity int) int
 		Password   func(childComplexity int) int
+		Pstn       func(childComplexity int) int
 	}
 
 	User struct {
@@ -88,7 +89,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool) (*model.ShareResponse, error)
+	CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) (*model.ShareResponse, error)
 	UpdateUserName(ctx context.Context, name string) (*model.User, error)
 	LogoutSession(ctx context.Context, token string) ([]string, error)
 	LogoutAllSessions(ctx context.Context) (*string, error)
@@ -126,7 +127,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateChannel(childComplexity, args["channel"].(string), args["password"].(*model.PasswordInput), args["enableLink"].(*bool)), true
+		return e.complexity.Mutation.CreateChannel(childComplexity, args["channel"].(string), args["password"].(*model.PasswordInput), args["enableLink"].(*bool), args["enablePSTN"].(*bool)), true
 
 	case "Mutation.logoutAllSessions":
 		if e.complexity.Mutation.LogoutAllSessions == nil {
@@ -286,6 +287,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ShareResponse.Password(childComplexity), true
 
+	case "ShareResponse.pstn":
+		if e.complexity.ShareResponse.Pstn == nil {
+			break
+		}
+
+		return e.complexity.ShareResponse.Pstn(childComplexity), true
+
 	case "User.email":
 		if e.complexity.User.Email == nil {
 			break
@@ -382,6 +390,7 @@ input PasswordInput {
 type ShareResponse {
   password: Password
   passphrase: Passphrase
+  pstn: String
 }
 
 type Session { 
@@ -406,7 +415,7 @@ type Query {
 }
 
 type Mutation {
-  createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true): ShareResponse!
+  createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
@@ -445,6 +454,14 @@ func (ec *executionContext) field_Mutation_createChannel_args(ctx context.Contex
 		}
 	}
 	args["enableLink"] = arg2
+	var arg3 *bool
+	if tmp, ok := rawArgs["enablePSTN"]; ok {
+		arg3, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["enablePSTN"] = arg3
 	return args, nil
 }
 
@@ -600,7 +617,7 @@ func (ec *executionContext) _Mutation_createChannel(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateChannel(rctx, args["channel"].(string), args["password"].(*model.PasswordInput), args["enableLink"].(*bool))
+		return ec.resolvers.Mutation().CreateChannel(rctx, args["channel"].(string), args["password"].(*model.PasswordInput), args["enableLink"].(*bool), args["enablePSTN"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1347,6 +1364,37 @@ func (ec *executionContext) _ShareResponse_passphrase(ctx context.Context, field
 	res := resTmp.(*model.Passphrase)
 	fc.Result = res
 	return ec.marshalOPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ShareResponse_pstn(ctx context.Context, field graphql.CollectedField, obj *model.ShareResponse) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ShareResponse",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pstn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_name(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -2764,6 +2812,8 @@ func (ec *executionContext) _ShareResponse(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._ShareResponse_password(ctx, field, obj)
 		case "passphrase":
 			out.Values[i] = ec._ShareResponse_passphrase(ctx, field, obj)
+		case "pstn":
+			out.Values[i] = ec._ShareResponse_pstn(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

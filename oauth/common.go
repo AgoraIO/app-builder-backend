@@ -65,7 +65,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 			ClientSecret: viper.GetString("CLIENT_SECRET"),
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
 			Endpoint:     google.Endpoint,
-			RedirectURL:  "https://infinite-dawn-92521.herokuapp.com/oauth/" + platform,
+			RedirectURL:  viper.GetString("REDIRECT_URL") + platform,
 		}
 		userInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 

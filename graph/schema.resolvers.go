@@ -17,7 +17,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool) (*model.ShareResponse, error) {
+func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) (*model.ShareResponse, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
 		return nil, errors.New("Invalid Token")
@@ -30,6 +30,14 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 
 	var hostPhrase string
 	var viewPhrase string
+	pstnString := "+17018052515"
+	var pstnResult *string
+
+	if *enablePstn {
+		pstnResult = &pstnString
+	} else {
+		pstnResult = nil
+	}
 
 	usephrase := false
 	usepass := false
@@ -58,7 +66,6 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 	}
 
 	r.DB.Create(newChannel)
-	// r.DB.Model(newChannel).Association("Creator").Append(authUser)
 
 	passwordResponse := model.Password(*password)
 
@@ -68,6 +75,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 			Host: hostPhrase,
 			View: viewPhrase,
 		},
+		Pstn: pstnResult,
 	}, nil
 }
 
