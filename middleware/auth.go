@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -20,10 +19,7 @@ type contextKey struct {
 func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Print(r.Method)
-
 			if r.Method == "OPTIONS" {
-
 				next.ServeHTTP(w, r)
 				return
 			}

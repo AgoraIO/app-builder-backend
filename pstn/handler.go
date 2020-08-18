@@ -15,8 +15,8 @@ import (
 
 // ResponseData contains all details needed in response
 type ResponseData struct {
-	AppID   string `json:""`
-	Channel string
+	AppID   string `json:"agoraApp"`
+	Channel string `json:"agoraChannel"`
 	Token   string
 	UID     string
 }
