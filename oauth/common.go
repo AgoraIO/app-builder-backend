@@ -120,7 +120,10 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 			}},
 		})
 	} else {
-		db.Model(&userData).Association("Tokens").Append(models.Token{TokenID: bearerToken})
+		db.Model(&userData).Association("Tokens").Append(models.Token{
+			TokenID:    bearerToken,
+			Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
+		})
 	}
 
 	return &redirect, &bearerToken, nil
