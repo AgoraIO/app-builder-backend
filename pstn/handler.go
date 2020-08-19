@@ -25,8 +25,11 @@ func InboundHandler(w http.ResponseWriter, r *http.Request) {
 	log.Print(r.Method)
 	agoraAppURL := r.URL.Query().Get("agoraAppURL")
 
+	log.Print(agoraAppURL)
+
 	var response ResponseData
 	resp, err := http.Get(agoraAppURL)
+	log.Print("resp1")
 	if err != nil {
 		panic(err)
 	}
@@ -34,6 +37,7 @@ func InboundHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
+	log.Print("resp2")
 	if err != nil {
 		panic(err)
 	}
@@ -72,6 +76,7 @@ func InboundHandler(w http.ResponseWriter, r *http.Request) {
 	finalResult = strings.Replace(finalResult, "{{Token}}", response.Token, 1)
 	finalResult = strings.Replace(finalResult, "{{UID}}", response.UID, 1)
 
+	log.Print(finalResult)
 	byt := []byte(finalResult)
 
 	w.Header().Set("Content-Type", "application/json")

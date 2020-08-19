@@ -27,6 +27,7 @@ func SetPSTN(channel string) error {
 			  "setPhoneNumber": {
 				"phoneNumberID": 6126,
 				"voiceAPI": {
+				  "url": "https://infinite-dawn-92521.herokuapp.com/static/agoraInbound.json",
 				  "vars": {
 					"agoraAppURL": "https://dev.turbobridge.com/voiceAPI/agoraInboundReflect.php?agoraApp=b8c2ef0f986541a8992451c07d30fb4b&agoraChannel={{Channel}}"
 				  }
