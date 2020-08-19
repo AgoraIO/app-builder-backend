@@ -19,12 +19,17 @@ type ShareResponse {
   pstn: String
 }
 
+type UserCredentials {
+  rtc: String!
+  rtm: String
+  uid: Int!
+}
+
 type Session { 
   channel: String
-  rtc: String!
-  rtm: String!
-  uid: Int!
   isHost: Boolean!
+  mainUser: UserCredentials!
+  screenShare: UserCredentials!
 }
 
 type User {

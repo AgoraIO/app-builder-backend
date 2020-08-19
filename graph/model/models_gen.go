@@ -18,11 +18,10 @@ type PasswordInput struct {
 }
 
 type Session struct {
-	Channel *string `json:"channel"`
-	Rtc     string  `json:"rtc"`
-	Rtm     string  `json:"rtm"`
-	UID     int     `json:"uid"`
-	IsHost  bool    `json:"isHost"`
+	Channel     *string          `json:"channel"`
+	IsHost      bool             `json:"isHost"`
+	MainUser    *UserCredentials `json:"mainUser"`
+	ScreenShare *UserCredentials `json:"screenShare"`
 }
 
 type ShareResponse struct {
@@ -34,4 +33,10 @@ type ShareResponse struct {
 type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
+}
+
+type UserCredentials struct {
+	Rtc string  `json:"rtc"`
+	Rtm *string `json:"rtm"`
+	UID int     `json:"uid"`
 }

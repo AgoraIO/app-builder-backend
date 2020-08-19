@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"fmt"
+	"math/rand"
 	"time"
 
+	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/utils/rtctoken"
 	"github.com/samyak-jain/agora_backend/utils/rtmtoken"
 	"github.com/spf13/viper"
@@ -25,4 +28,31 @@ func GetRtmToken(user string) (string, error) {
 	expireTimestamp := currentTimestamp + 86400
 
 	return rtmtoken.BuildToken(viper.GetString("appID"), viper.GetString("appCertificate"), user, rtmtoken.RoleRtmUser, expireTimestamp)
+}
+
+// GenerateUserCredentials generates uid, rtc and rtc token
+func GenerateUserCredentials(channel string, rtm bool) (*model.UserCredentials, error) {
+	uid := int(rand.Uint32())
+	rtcToken, err := GetRtcToken(channel, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	if !rtm {
+		return &model.UserCredentials{
+			Rtc: rtcToken,
+			UID: uid,
+		}, nil
+	}
+
+	rtmToken, err := GetRtmToken(fmt.Sprint(uid))
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.UserCredentials{
+		Rtc: rtcToken,
+		Rtm: &rtmToken,
+		UID: uid,
+	}, nil
 }

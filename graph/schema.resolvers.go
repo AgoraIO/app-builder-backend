@@ -6,15 +6,12 @@ package graph
 import (
 	"context"
 	"errors"
-	"fmt"
-	"math/rand"
-
-	"github.com/samyak-jain/agora_backend/pstn"
 
 	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/models"
+	"github.com/samyak-jain/agora_backend/pstn"
 	"github.com/samyak-jain/agora_backend/utils"
 	uuid "github.com/satori/go.uuid"
 )
@@ -149,17 +146,6 @@ func (r *queryResolver) JoinChannel(ctx context.Context, channel string, passwor
 		return nil, errors.New("Cannot join using password")
 	}
 
-	uid := int(rand.Uint32())
-	rtcToken, err := utils.GetRtcToken(channel, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	rtmToken, err := utils.GetRtmToken(fmt.Sprint(uid))
-	if err != nil {
-		return nil, err
-	}
-
 	var host bool
 	if password == channelData.HostPassword {
 		host = true
@@ -169,12 +155,21 @@ func (r *queryResolver) JoinChannel(ctx context.Context, channel string, passwor
 		return nil, errors.New("Invalid Password")
 	}
 
+	mainUser, err := utils.GenerateUserCredentials(channel, true)
+	if err != nil {
+		return nil, err
+	}
+
+	screenShare, err := utils.GenerateUserCredentials(channel, false)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.Session{
-		Channel: &channel,
-		Rtc:     rtcToken,
-		Rtm:     rtmToken,
-		UID:     uid,
-		IsHost:  host,
+		Channel:     &channel,
+		IsHost:      host,
+		MainUser:    mainUser,
+		ScreenShare: screenShare,
 	}, nil
 }
 
@@ -200,23 +195,21 @@ func (r *queryResolver) JoinChannelWithPassphrase(ctx context.Context, passphras
 		return nil, errors.New("Cannot login using passphrase")
 	}
 
-	uid := int(rand.Uint32())
-	rtcToken, err := utils.GetRtcToken(channelData.Name, uid)
+	mainUser, err := utils.GenerateUserCredentials(channelData.Name, true)
 	if err != nil {
 		return nil, err
 	}
 
-	rtmToken, err := utils.GetRtmToken(fmt.Sprint(uid))
+	screenShare, err := utils.GenerateUserCredentials(channelData.Name, false)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.Session{
-		Channel: &channelData.Name,
-		Rtc:     rtcToken,
-		Rtm:     rtmToken,
-		UID:     uid,
-		IsHost:  host,
+		Channel:     &channelData.Name,
+		IsHost:      host,
+		MainUser:    mainUser,
+		ScreenShare: screenShare,
 	}, nil
 }
 
