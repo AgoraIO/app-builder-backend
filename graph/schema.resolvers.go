@@ -108,6 +108,8 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 
 	tokenIndex := -1
 
+	r.DB.Preload("Tokens").Find(&authUser)
+
 	for index := range authUser.Tokens {
 		if authUser.Tokens[index].TokenID == token {
 			tokenIndex = index
@@ -253,6 +255,8 @@ func (r *queryResolver) GetSessions(ctx context.Context) ([]string, error) {
 	if authUser == nil {
 		return nil, errors.New("Invalid Token")
 	}
+
+	r.DB.Preload("Tokens").Find(&authUser)
 
 	return authUser.GetAllTokens(), nil
 }
