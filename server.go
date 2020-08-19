@@ -25,6 +25,7 @@ const defaultPort = "8080"
 
 func main() {
 	utils.SetupConfig()
+
 	port := utils.GetPORT()
 
 	database, err := models.CreateDB(utils.GetDBURL())
@@ -33,14 +34,6 @@ func main() {
 	}
 
 	router := chi.NewRouter()
-	// router.Use(func(next http.Handler) http.Handler {
-	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 		w.Header().Set("Access-Control-Allow-Origin", "*")
-	// 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-	// 		next.ServeHTTP(w, r)
-	// 	})
-	// })
 
 	router.Use(middleware.AuthHandler(database))
 	router.Use(cors.New(cors.Options{
