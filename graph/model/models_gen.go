@@ -2,6 +2,11 @@
 
 package model
 
+type Pstn struct {
+	Number string `json:"number"`
+	Dtmf   string `json:"dtmf"`
+}
+
 type Passphrase struct {
 	Host string `json:"host"`
 	View string `json:"view"`
@@ -27,7 +32,7 @@ type Session struct {
 type ShareResponse struct {
 	Password   *Password   `json:"password"`
 	Passphrase *Passphrase `json:"passphrase"`
-	Pstn       *string     `json:"pstn"`
+	Pstn       *Pstn       `json:"pstn"`
 }
 
 type User struct {

@@ -50,6 +50,11 @@ type ComplexityRoot struct {
 		UpdateUserName    func(childComplexity int, name string) int
 	}
 
+	Pstn struct {
+		Dtmf   func(childComplexity int) int
+		Number func(childComplexity int) int
+	}
+
 	Passphrase struct {
 		Host func(childComplexity int) int
 		View func(childComplexity int) int
@@ -164,6 +169,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateUserName(childComplexity, args["name"].(string)), true
+
+	case "PSTN.dtmf":
+		if e.complexity.Pstn.Dtmf == nil {
+			break
+		}
+
+		return e.complexity.Pstn.Dtmf(childComplexity), true
+
+	case "PSTN.number":
+		if e.complexity.Pstn.Number == nil {
+			break
+		}
+
+		return e.complexity.Pstn.Number(childComplexity), true
 
 	case "Passphrase.host":
 		if e.complexity.Passphrase.Host == nil {
@@ -401,6 +420,11 @@ type Password {
   view: String!
 }
 
+type PSTN {
+  number: String!
+  dtmf: String!
+}
+
 input PasswordInput {
   host: String!
   view: String!
@@ -409,7 +433,7 @@ input PasswordInput {
 type ShareResponse {
   password: Password
   passphrase: Passphrase
-  pstn: String
+  pstn: PSTN
 }
 
 type UserCredentials {
@@ -766,6 +790,74 @@ func (ec *executionContext) _Mutation_logoutAllSessions(ctx context.Context, fie
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PSTN_number(ctx context.Context, field graphql.CollectedField, obj *model.Pstn) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PSTN",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Number, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PSTN_dtmf(ctx context.Context, field graphql.CollectedField, obj *model.Pstn) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PSTN",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Dtmf, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Passphrase_host(ctx context.Context, field graphql.CollectedField, obj *model.Passphrase) (ret graphql.Marshaler) {
@@ -1382,9 +1474,9 @@ func (ec *executionContext) _ShareResponse_pstn(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*model.Pstn)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOPSTN2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPstn(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_name(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -2681,6 +2773,38 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var pSTNImplementors = []string{"PSTN"}
+
+func (ec *executionContext) _PSTN(ctx context.Context, sel ast.SelectionSet, obj *model.Pstn) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pSTNImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PSTN")
+		case "number":
+			out.Values[i] = ec._PSTN_number(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "dtmf":
+			out.Values[i] = ec._PSTN_dtmf(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var passphraseImplementors = []string{"Passphrase"}
 
 func (ec *executionContext) _Passphrase(ctx context.Context, sel ast.SelectionSet, obj *model.Passphrase) graphql.Marshaler {
@@ -3565,6 +3689,17 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOPSTN2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPstn(ctx context.Context, sel ast.SelectionSet, v model.Pstn) graphql.Marshaler {
+	return ec._PSTN(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOPSTN2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPstn(ctx context.Context, sel ast.SelectionSet, v *model.Pstn) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PSTN(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPassphrase2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx context.Context, sel ast.SelectionSet, v model.Passphrase) graphql.Marshaler {

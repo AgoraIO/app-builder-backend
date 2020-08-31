@@ -1,4 +1,4 @@
-package oauth
+package routes
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"net/url"
 )
 
-// MobileOAuthHandler is a REST route that is called when the oauth provider redirects to here and provides the code
-func (o *Router) MobileOAuthHandler(w http.ResponseWriter, r *http.Request) {
-	redirect, token, err := Handler(w, r, o.DB, "mobile")
+// DesktopOAuthHandler is a REST route that is called when the oauth provider redirects to here and provides the code
+func (o *Router) DesktopOAuthHandler(w http.ResponseWriter, r *http.Request) {
+	redirect, token, err := Handler(w, r, o.DB, "desktop")
 	if err != nil {
 		log.Panic(err)
 		fmt.Fprint(w, err)

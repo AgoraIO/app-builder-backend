@@ -8,6 +8,11 @@ type Password {
   view: String!
 }
 
+type PSTN {
+  number: String!
+  dtmf: String!
+}
+
 input PasswordInput {
   host: String!
   view: String!
@@ -16,7 +21,7 @@ input PasswordInput {
 type ShareResponse {
   password: Password
   passphrase: Passphrase
-  pstn: String
+  pstn: PSTN
 }
 
 type UserCredentials {

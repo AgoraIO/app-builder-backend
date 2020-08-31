@@ -4,11 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/samyak-jain/agora_backend/pstn"
-
 	"github.com/rs/cors"
 	"github.com/samyak-jain/agora_backend/middleware"
-	"github.com/samyak-jain/agora_backend/oauth"
+	"github.com/samyak-jain/agora_backend/routes"
 
 	"github.com/samyak-jain/agora_backend/models"
 
@@ -49,28 +47,15 @@ func main() {
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
-	oauthHandler := oauth.Router{DB: database}
+	requestHandler := routes.Router{DB: database}
 
 	router.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	router.Handle("/error", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Print(r.Method)
-		log.Print(r.Header)
-		log.Print(r.URL)
-		err := r.ParseForm()
-		if err != nil {
-			log.Print(err)
-		} else {
-			log.Print(r.PostForm)
-		}
-		log.Print(r.Body)
-	}))
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
-	router.Handle("/oauth/web", http.HandlerFunc(oauthHandler.WebOAuthHandler))
-	router.Handle("/oauth/desktop", http.HandlerFunc(oauthHandler.DesktopOAuthHandler))
-	router.Handle("/oauth/mobile", http.HandlerFunc(oauthHandler.MobileOAuthHandler))
-	router.Handle("/pstnHandle", http.HandlerFunc(pstn.InboundHandler))
-	// router.Handle("/", http.FileServer(http.Dir("./static")))
+	router.Handle("/oauth/web", http.HandlerFunc(requestHandler.WebOAuthHandler))
+	router.Handle("/oauth/desktop", http.HandlerFunc(requestHandler.DesktopOAuthHandler))
+	router.Handle("/oauth/mobile", http.HandlerFunc(requestHandler.MobileOAuthHandler))
+	router.Handle("/pstnHandle", http.HandlerFunc(requestHandler.DTMFHandler))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, router))

@@ -11,7 +11,6 @@ import (
 	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/models"
-	"github.com/samyak-jain/agora_backend/pstn"
 	"github.com/samyak-jain/agora_backend/utils"
 	uuid "github.com/satori/go.uuid"
 )
@@ -29,18 +28,25 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 
 	var hostPhrase string
 	var viewPhrase string
-	pstnString := "+17018052515"
-	var pstnResult *string
+	var pstnResponse *model.Pstn
+	var dtmfResult *string
 
 	if *enablePstn {
-		pstnResult = &pstnString
-		err := pstn.SetPSTN(channel)
+		dtmfResult, err := utils.GenerateDTMF()
+		if err != nil {
+			return nil, err
+		}
+
+		pstnResponse = &model.Pstn{
+			Number: "+17018052515",
+			Dtmf:   *dtmfResult,
+		}
 
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		pstnResult = nil
+		pstnResponse = nil
 	}
 
 	usephrase := false
@@ -58,6 +64,10 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 		password = &model.PasswordInput{Host: "", View: ""}
 	}
 
+	if dtmfResult == nil {
+		*dtmfResult = ""
+	}
+
 	newChannel := &models.Channel{
 		Name:             channel,
 		UsePassword:      usepass,
@@ -66,6 +76,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 		UsePassphrase:    usephrase,
 		HostPassphrase:   hostPhrase,
 		ViewerPassphrase: viewPhrase,
+		DTMF:             *dtmfResult,
 		Creator:          *authUser,
 	}
 
@@ -79,7 +90,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 			Host: hostPhrase,
 			View: viewPhrase,
 		},
-		Pstn: pstnResult,
+		Pstn: pstnResponse,
 	}, nil
 }
 

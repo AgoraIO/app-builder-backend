@@ -14,5 +14,6 @@ type Channel struct {
 	UsePassphrase    bool
 	HostPassphrase   string
 	ViewerPassphrase string
+	DTMF             string
 	Creator          User
 }
