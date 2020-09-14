@@ -22,6 +22,11 @@ type PasswordInput struct {
 	View string `json:"view"`
 }
 
+type RecordingResult struct {
+	Rid string `json:"rid"`
+	Sid string `json:"sid"`
+}
+
 type Session struct {
 	Channel     *string          `json:"channel"`
 	IsHost      bool             `json:"isHost"`

@@ -42,6 +42,11 @@ type User {
   email: String!
 }
 
+type RecordingResult {
+  rid: String!
+  sid: String!
+}
+
 type Query {
   joinChannel(channel: String!, password: String!): Session!
   joinChannelWithPassphrase(passphrase: String!): Session!
@@ -53,6 +58,8 @@ type Query {
 type Mutation {
   createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
+  startRecordingSession(channel: String!, uid: Int!): RecordingResult!
+  stopRecordingSession(channel: String!, uid: Int!, rid: String!, sid: String!): String!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
 }

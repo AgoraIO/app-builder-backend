@@ -111,6 +111,36 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 	}, nil
 }
 
+func (r *mutationResolver) StartRecordingSession(ctx context.Context, channel string, uid int) (*model.RecordingResult, error) {
+	recorder := &utils.Recorder{}
+	recorder.Channel = channel
+	recorder.UID = uid
+
+	err := recorder.Acquire()
+	if err != nil {
+		return nil, err
+	}
+
+	err = recorder.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.RecordingResult{
+		Rid: recorder.RID,
+		Sid: recorder.SID,
+	}, nil
+}
+
+func (r *mutationResolver) StopRecordingSession(ctx context.Context, channel string, uid int, rid string, sid string) (string, error) {
+	err := utils.Stop(channel, uid, rid, sid)
+	if err != nil {
+		return "", err
+	}
+
+	return "success", nil
+}
+
 func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]string, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {

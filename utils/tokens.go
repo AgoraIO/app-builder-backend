@@ -18,7 +18,7 @@ func GetRtcToken(channel string, uid int) (string, error) {
 	currentTimestamp := uint32(time.Now().UTC().Unix())
 	expireTimestamp := currentTimestamp + 86400
 
-	return rtctoken.BuildTokenWithUID(viper.GetString("appID"), viper.GetString("appCertificate"), channel, uint32(uid), RtcRole, expireTimestamp)
+	return rtctoken.BuildTokenWithUID(viper.GetString("APP_ID"), viper.GetString("APP_CERTIFICATE"), channel, uint32(uid), RtcRole, expireTimestamp)
 }
 
 // GetRtmToken generates a token for Agora RTM SDK
@@ -27,7 +27,7 @@ func GetRtmToken(user string) (string, error) {
 	currentTimestamp := uint32(time.Now().UTC().Unix())
 	expireTimestamp := currentTimestamp + 86400
 
-	return rtmtoken.BuildToken(viper.GetString("appID"), viper.GetString("appCertificate"), user, rtmtoken.RoleRtmUser, expireTimestamp)
+	return rtmtoken.BuildToken(viper.GetString("APP_ID"), viper.GetString("APP_CERTIFICATE"), user, rtmtoken.RoleRtmUser, expireTimestamp)
 }
 
 // GenerateUserCredentials generates uid, rtc and rtc token

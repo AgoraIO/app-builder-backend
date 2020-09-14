@@ -44,10 +44,12 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateChannel     func(childComplexity int, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) int
-		LogoutAllSessions func(childComplexity int) int
-		LogoutSession     func(childComplexity int, token string) int
-		UpdateUserName    func(childComplexity int, name string) int
+		CreateChannel         func(childComplexity int, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) int
+		LogoutAllSessions     func(childComplexity int) int
+		LogoutSession         func(childComplexity int, token string) int
+		StartRecordingSession func(childComplexity int, channel string, uid int) int
+		StopRecordingSession  func(childComplexity int, channel string, uid int, rid string, sid string) int
+		UpdateUserName        func(childComplexity int, name string) int
 	}
 
 	Pstn struct {
@@ -71,6 +73,11 @@ type ComplexityRoot struct {
 		JoinChannel               func(childComplexity int, channel string, password string) int
 		JoinChannelWithPassphrase func(childComplexity int, passphrase string) int
 		Share                     func(childComplexity int, channel string) int
+	}
+
+	RecordingResult struct {
+		Rid func(childComplexity int) int
+		Sid func(childComplexity int) int
 	}
 
 	Session struct {
@@ -101,6 +108,8 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) (*model.ShareResponse, error)
 	UpdateUserName(ctx context.Context, name string) (*model.User, error)
+	StartRecordingSession(ctx context.Context, channel string, uid int) (*model.RecordingResult, error)
+	StopRecordingSession(ctx context.Context, channel string, uid int, rid string, sid string) (string, error)
 	LogoutSession(ctx context.Context, token string) ([]string, error)
 	LogoutAllSessions(ctx context.Context) (*string, error)
 }
@@ -157,6 +166,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.LogoutSession(childComplexity, args["token"].(string)), true
+
+	case "Mutation.startRecordingSession":
+		if e.complexity.Mutation.StartRecordingSession == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_startRecordingSession_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StartRecordingSession(childComplexity, args["channel"].(string), args["uid"].(int)), true
+
+	case "Mutation.stopRecordingSession":
+		if e.complexity.Mutation.StopRecordingSession == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_stopRecordingSession_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StopRecordingSession(childComplexity, args["channel"].(string), args["uid"].(int), args["rid"].(string), args["sid"].(string)), true
 
 	case "Mutation.updateUserName":
 		if e.complexity.Mutation.UpdateUserName == nil {
@@ -261,6 +294,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Share(childComplexity, args["channel"].(string)), true
+
+	case "RecordingResult.rid":
+		if e.complexity.RecordingResult.Rid == nil {
+			break
+		}
+
+		return e.complexity.RecordingResult.Rid(childComplexity), true
+
+	case "RecordingResult.sid":
+		if e.complexity.RecordingResult.Sid == nil {
+			break
+		}
+
+		return e.complexity.RecordingResult.Sid(childComplexity), true
 
 	case "Session.channel":
 		if e.complexity.Session.Channel == nil {
@@ -454,6 +501,11 @@ type User {
   email: String!
 }
 
+type RecordingResult {
+  rid: String!
+  sid: String!
+}
+
 type Query {
   joinChannel(channel: String!, password: String!): Session!
   joinChannelWithPassphrase(passphrase: String!): Session!
@@ -465,6 +517,8 @@ type Query {
 type Mutation {
   createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
+  startRecordingSession(channel: String!, uid: Int!): RecordingResult!
+  stopRecordingSession(channel: String!, uid: Int!, rid: String!, sid: String!): String!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
 }`, BuiltIn: false},
@@ -524,6 +578,66 @@ func (ec *executionContext) field_Mutation_logoutSession_args(ctx context.Contex
 		}
 	}
 	args["token"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_startRecordingSession_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["channel"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["channel"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["uid"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["uid"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_stopRecordingSession_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["channel"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["channel"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["uid"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["uid"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["rid"]; ok {
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["rid"] = arg2
+	var arg3 string
+	if tmp, ok := rawArgs["sid"]; ok {
+		arg3, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["sid"] = arg3
 	return args, nil
 }
 
@@ -721,6 +835,88 @@ func (ec *executionContext) _Mutation_updateUserName(ctx context.Context, field 
 	res := resTmp.(*model.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_startRecordingSession(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_startRecordingSession_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().StartRecordingSession(rctx, args["channel"].(string), args["uid"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.RecordingResult)
+	fc.Result = res
+	return ec.marshalNRecordingResult2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐRecordingResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_stopRecordingSession(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_stopRecordingSession_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().StopRecordingSession(rctx, args["channel"].(string), args["uid"].(int), args["rid"].(string), args["sid"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_logoutSession(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1251,6 +1447,74 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	res := resTmp.(*introspection.Schema)
 	fc.Result = res
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RecordingResult_rid(ctx context.Context, field graphql.CollectedField, obj *model.RecordingResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RecordingResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rid, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RecordingResult_sid(ctx context.Context, field graphql.CollectedField, obj *model.RecordingResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RecordingResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Sid, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Session_channel(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
@@ -2758,6 +3022,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "startRecordingSession":
+			out.Values[i] = ec._Mutation_startRecordingSession(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "stopRecordingSession":
+			out.Values[i] = ec._Mutation_stopRecordingSession(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "logoutSession":
 			out.Values[i] = ec._Mutation_logoutSession(ctx, field)
 		case "logoutAllSessions":
@@ -2955,6 +3229,38 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
 			out.Values[i] = ec._Query___schema(ctx, field)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var recordingResultImplementors = []string{"RecordingResult"}
+
+func (ec *executionContext) _RecordingResult(ctx context.Context, sel ast.SelectionSet, obj *model.RecordingResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recordingResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecordingResult")
+		case "rid":
+			out.Values[i] = ec._RecordingResult_rid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "sid":
+			out.Values[i] = ec._RecordingResult_sid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3370,6 +3676,20 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNRecordingResult2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐRecordingResult(ctx context.Context, sel ast.SelectionSet, v model.RecordingResult) graphql.Marshaler {
+	return ec._RecordingResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRecordingResult2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐRecordingResult(ctx context.Context, sel ast.SelectionSet, v *model.RecordingResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._RecordingResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSession2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐSession(ctx context.Context, sel ast.SelectionSet, v model.Session) graphql.Marshaler {
