@@ -34,7 +34,6 @@ func main() {
 
 	router := chi.NewRouter()
 
-	router.Use(middleware.AuthHandler(database))
 	router.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
@@ -42,6 +41,7 @@ func main() {
 		// Enable Debugging for testing, consider disabling in production
 		Debug: true,
 	}).Handler)
+	router.Use(middleware.AuthHandler(database))
 
 	config := generated.Config{
 		Resolvers: &graph.Resolver{DB: database},

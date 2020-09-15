@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/samyak-jain/agora_backend/models"
 )
@@ -40,17 +39,6 @@ func AuthHandler(db *models.Database) func(http.Handler) http.Handler {
 				} else if err := db.Where("email = ?", tokenData.UserEmail).First(&user).Error; err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 				} else {
-
-					exTime, err := time.Parse(time.UnixDate, tokenData.Expiration)
-					if err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-
-					if exTime.Before(time.Now()) {
-						w.WriteHeader(http.StatusUnauthorized)
-						return
-					}
 					ctx := context.WithValue(r.Context(), userContextKey, &user)
 					next.ServeHTTP(w, r.WithContext(ctx))
 				}
