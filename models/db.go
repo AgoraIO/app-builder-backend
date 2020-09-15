@@ -1,8 +1,6 @@
 package models
 
 import (
-	"log"
-
 	"github.com/jinzhu/gorm"
 
 	// Importing postgres driver
@@ -18,7 +16,7 @@ type Database struct {
 func CreateDB(dbURL string) (*Database, error) {
 	db, err := gorm.Open("postgres", dbURL)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 
 	// TODO: Setup Production Migrations

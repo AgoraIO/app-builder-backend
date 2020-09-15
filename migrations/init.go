@@ -11,7 +11,8 @@ func main() {
 	utils.SetupConfig()
 	db, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
+		return
 	}
 
 	defer db.Close()

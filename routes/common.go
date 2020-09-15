@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -35,8 +34,8 @@ type Router struct {
 func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platform string) (*string, *string, error) {
 	err := r.ParseForm()
 	if err != nil {
-		log.Panic(err)
 		w.WriteHeader(http.StatusBadRequest)
+		return nil, nil, err
 	}
 
 	code := r.FormValue("code")

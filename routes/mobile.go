@@ -11,14 +11,14 @@ import (
 func (o *Router) MobileOAuthHandler(w http.ResponseWriter, r *http.Request) {
 	redirect, token, err := Handler(w, r, o.DB, "mobile")
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		fmt.Fprint(w, err)
 		return
 	}
 
 	newURL, err := url.Parse(*redirect)
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		fmt.Fprint(w, err)
 		return
 	}

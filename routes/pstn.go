@@ -19,13 +19,13 @@ func (o *Router) DTMFHandler(w http.ResponseWriter, r *http.Request) {
 
 	var channelData *models.Channel
 	if err := o.DB.Where("DTMF = ?", dtmf).First(&channelData).Error; err != nil {
-		panic(err)
+		log.Print(err)
 	}
 
 	uid := int(rand.Uint32())
 	tokenData, err := utils.GetRtcToken(channelData.Name, uid)
 	if err != nil {
-		panic(err)
+		log.Print(err)
 	}
 
 	responseString := `{

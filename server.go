@@ -28,7 +28,8 @@ func main() {
 
 	database, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
+		return
 	}
 
 	router := chi.NewRouter()
