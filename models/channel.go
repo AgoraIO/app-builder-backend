@@ -1,6 +1,8 @@
 package models
 
 import (
+	"database/sql"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -11,7 +13,7 @@ type Channel struct {
 	Name             string
 	HostPassphrase   string
 	ViewerPassphrase string
-	DTMF             *string
+	DTMF             sql.NullString
 	Recording        Recording
 	Hosts            []User
 }

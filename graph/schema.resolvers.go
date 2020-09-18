@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	"github.com/samyak-jain/agora_backend/graph/generated"
@@ -22,7 +23,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 	}
 
 	var pstnResponse *model.Pstn
-	var dtmfResult *string
+	var dtmfResult sql.NullString
 
 	if *enablePstn {
 		dtmfResult, err := utils.GenerateDTMF()
@@ -269,13 +270,13 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 	}
 
 	var pstnResult *model.Pstn
-	if channelData.DTMF == nil {
-		pstnResult = nil
-	} else {
+	if channelData.DTMF.Valid {
 		pstnResult = &model.Pstn{
 			Number: "+17018052515",
-			Dtmf:   *channelData.DTMF,
+			Dtmf:   channelData.DTMF.String,
 		}
+	} else {
+		pstnResult = nil
 	}
 
 	return &model.ShareResponse{
