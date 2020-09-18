@@ -13,7 +13,6 @@ type Passphrase struct {
 }
 
 type Session struct {
-	Passphrase  *Passphrase      `json:"passphrase"`
 	Channel     string           `json:"channel"`
 	Title       string           `json:"title"`
 	IsHost      bool             `json:"isHost"`
@@ -23,6 +22,7 @@ type Session struct {
 
 type ShareResponse struct {
 	Passphrase *Passphrase `json:"passphrase"`
+	Channel    string      `json:"channel"`
 	Title      string      `json:"title"`
 	Pstn       *Pstn       `json:"pstn"`
 }

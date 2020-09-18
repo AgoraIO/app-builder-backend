@@ -73,12 +73,12 @@ type ComplexityRoot struct {
 		Channel     func(childComplexity int) int
 		IsHost      func(childComplexity int) int
 		MainUser    func(childComplexity int) int
-		Passphrase  func(childComplexity int) int
 		ScreenShare func(childComplexity int) int
 		Title       func(childComplexity int) int
 	}
 
 	ShareResponse struct {
+		Channel    func(childComplexity int) int
 		Passphrase func(childComplexity int) int
 		Pstn       func(childComplexity int) int
 		Title      func(childComplexity int) int
@@ -280,13 +280,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Session.MainUser(childComplexity), true
 
-	case "Session.passphrase":
-		if e.complexity.Session.Passphrase == nil {
-			break
-		}
-
-		return e.complexity.Session.Passphrase(childComplexity), true
-
 	case "Session.screenShare":
 		if e.complexity.Session.ScreenShare == nil {
 			break
@@ -300,6 +293,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Session.Title(childComplexity), true
+
+	case "ShareResponse.channel":
+		if e.complexity.ShareResponse.Channel == nil {
+			break
+		}
+
+		return e.complexity.ShareResponse.Channel(childComplexity), true
 
 	case "ShareResponse.passphrase":
 		if e.complexity.ShareResponse.Passphrase == nil {
@@ -433,6 +433,7 @@ type PSTN {
 
 type ShareResponse {
   passphrase: Passphrase!
+  channel: String!
   title: String!
   pstn: PSTN
 }
@@ -444,7 +445,6 @@ type UserCredentials {
 }
 
 type Session { 
-  passphrase: Passphrase!
   channel: String!
   title: String!
   isHost: Boolean!
@@ -1217,40 +1217,6 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Session_passphrase(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Session",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Passphrase, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Passphrase)
-	fc.Result = res
-	return ec.marshalNPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Session_channel(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1453,6 +1419,40 @@ func (ec *executionContext) _ShareResponse_passphrase(ctx context.Context, field
 	res := resTmp.(*model.Passphrase)
 	fc.Result = res
 	return ec.marshalNPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ShareResponse_channel(ctx context.Context, field graphql.CollectedField, obj *model.ShareResponse) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ShareResponse",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Channel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ShareResponse_title(ctx context.Context, field graphql.CollectedField, obj *model.ShareResponse) (ret graphql.Marshaler) {
@@ -2955,11 +2955,6 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Session")
-		case "passphrase":
-			out.Values[i] = ec._Session_passphrase(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "channel":
 			out.Values[i] = ec._Session_channel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -3009,6 +3004,11 @@ func (ec *executionContext) _ShareResponse(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("ShareResponse")
 		case "passphrase":
 			out.Values[i] = ec._ShareResponse_passphrase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "channel":
+			out.Values[i] = ec._ShareResponse_channel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

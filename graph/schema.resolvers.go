@@ -50,8 +50,11 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		dtmfResult = &tmpString
 	}
 
+	channelName := uuid.NewV4().String()
+
 	newChannel := &models.Channel{
-		Name:             title,
+		Title:            title,
+		Name:             channelName,
 		HostPassphrase:   hostPhrase,
 		ViewerPassphrase: viewPhrase,
 		DTMF:             *dtmfResult,
@@ -65,7 +68,8 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 			Host: &hostPhrase,
 			View: viewPhrase,
 		},
-		Pstn: pstnResponse,
+		Channel: channelName,
+		Pstn:    pstnResponse,
 	}, nil
 }
 
@@ -277,7 +281,8 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 			Host: hostPassphrase,
 			View: channelData.ViewerPassphrase,
 		},
-		Title: channelData.Title,
+		Channel: channelData.Name,
+		Title:   channelData.Title,
 		Pstn: &model.Pstn{
 			Number: "+17018052515",
 			Dtmf:   channelData.DTMF,

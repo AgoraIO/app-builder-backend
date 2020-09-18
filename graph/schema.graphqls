@@ -10,6 +10,7 @@ type PSTN {
 
 type ShareResponse {
   passphrase: Passphrase!
+  channel: String!
   title: String!
   pstn: PSTN
 }
