@@ -11,7 +11,7 @@ type Channel struct {
 	Name             string
 	HostPassphrase   string
 	ViewerPassphrase string
-	DTMF             string
+	DTMF             *string
 	Recording        Recording
 	Hosts            []User
 }
