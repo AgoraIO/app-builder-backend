@@ -80,7 +80,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 			View: viewPhrase,
 		},
 		Title:   title,
-		Channel: channelName,
+		Channel: channel,
 		Pstn:    pstnResponse,
 	}, nil
 }
