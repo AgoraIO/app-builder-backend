@@ -8,8 +8,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/samyak-jain/agora_backend/utils"
+
 	"github.com/samyak-jain/agora_backend/models"
-	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -106,7 +107,10 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		return nil, nil, errors.New("Email is not verified")
 	}
 
-	bearerToken := uuid.NewV4().String()
+	bearerToken, err := utils.GenerateUUID()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	var userData models.User
 	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {

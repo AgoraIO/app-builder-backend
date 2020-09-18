@@ -6,13 +6,13 @@ package graph
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/utils"
-	uuid "github.com/satori/go.uuid"
 )
 
 func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error) {
@@ -24,9 +24,22 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 	var pstnResponse *model.Pstn
 	var newChannel *models.Channel
 
-	hostPhrase := uuid.NewV4().String()
-	viewPhrase := uuid.NewV4().String()
-	channelName := uuid.NewV4().String()
+	hostPhrase, err := utils.GenerateUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	viewPhrase, err := utils.GenerateUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	channelName, err := utils.GenerateUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	channel := strings.ReplaceAll(channelName, "-", "")
 
 	if *enablePstn {
 		dtmfResult, err := utils.GenerateDTMF()
@@ -41,7 +54,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 
 		newChannel = &models.Channel{
 			Title:            title,
-			Name:             channelName,
+			Name:             channel,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 			DTMF:             *dtmfResult,
@@ -52,7 +65,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		pstnResponse = nil
 		newChannel = &models.Channel{
 			Title:            title,
-			Name:             channelName,
+			Name:             channel,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 			Hosts:            []models.User{*authUser},

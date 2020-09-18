@@ -3,6 +3,8 @@ package utils
 import (
 	"crypto/rand"
 	"io"
+
+	"github.com/gofrs/uuid"
 )
 
 // GenerateDTMF generates a random string of 8 digits
@@ -22,4 +24,14 @@ func GenerateDTMF() (*string, error) {
 
 	result := string(b)
 	return &result, nil
+}
+
+// GenerateUUID generates a uuid string
+func GenerateUUID() (string, error) {
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		return "", err
+	}
+
+	return uuid.String(), nil
 }
