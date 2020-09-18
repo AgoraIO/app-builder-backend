@@ -44,11 +44,11 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateChannel         func(childComplexity int, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) int
+		CreateChannel         func(childComplexity int, title string, enablePstn *bool) int
 		LogoutAllSessions     func(childComplexity int) int
 		LogoutSession         func(childComplexity int, token string) int
-		StartRecordingSession func(childComplexity int, channel string, uid int) int
-		StopRecordingSession  func(childComplexity int, channel string, uid int, rid string, sid string) int
+		StartRecordingSession func(childComplexity int, channel string) int
+		StopRecordingSession  func(childComplexity int, channel string) int
 		UpdateUserName        func(childComplexity int, name string) int
 	}
 
@@ -62,35 +62,26 @@ type ComplexityRoot struct {
 		View func(childComplexity int) int
 	}
 
-	Password struct {
-		Host func(childComplexity int) int
-		View func(childComplexity int) int
-	}
-
 	Query struct {
-		GetSessions               func(childComplexity int) int
-		GetUser                   func(childComplexity int) int
-		JoinChannel               func(childComplexity int, channel string, password string) int
-		JoinChannelWithPassphrase func(childComplexity int, passphrase string) int
-		Share                     func(childComplexity int, channel string) int
-	}
-
-	RecordingResult struct {
-		Rid func(childComplexity int) int
-		Sid func(childComplexity int) int
+		GetSessions func(childComplexity int) int
+		GetUser     func(childComplexity int) int
+		JoinChannel func(childComplexity int, passphrase string) int
+		Share       func(childComplexity int, passphrase string) int
 	}
 
 	Session struct {
 		Channel     func(childComplexity int) int
 		IsHost      func(childComplexity int) int
 		MainUser    func(childComplexity int) int
+		Passphrase  func(childComplexity int) int
 		ScreenShare func(childComplexity int) int
+		Title       func(childComplexity int) int
 	}
 
 	ShareResponse struct {
 		Passphrase func(childComplexity int) int
-		Password   func(childComplexity int) int
 		Pstn       func(childComplexity int) int
+		Title      func(childComplexity int) int
 	}
 
 	User struct {
@@ -106,17 +97,16 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateChannel(ctx context.Context, channel string, password *model.PasswordInput, enableLink *bool, enablePstn *bool) (*model.ShareResponse, error)
+	CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error)
 	UpdateUserName(ctx context.Context, name string) (*model.User, error)
-	StartRecordingSession(ctx context.Context, channel string, uid int) (*model.RecordingResult, error)
-	StopRecordingSession(ctx context.Context, channel string, uid int, rid string, sid string) (string, error)
+	StartRecordingSession(ctx context.Context, channel string) (string, error)
+	StopRecordingSession(ctx context.Context, channel string) (string, error)
 	LogoutSession(ctx context.Context, token string) ([]string, error)
 	LogoutAllSessions(ctx context.Context) (*string, error)
 }
 type QueryResolver interface {
-	JoinChannel(ctx context.Context, channel string, password string) (*model.Session, error)
-	JoinChannelWithPassphrase(ctx context.Context, passphrase string) (*model.Session, error)
-	Share(ctx context.Context, channel string) (*model.ShareResponse, error)
+	JoinChannel(ctx context.Context, passphrase string) (*model.Session, error)
+	Share(ctx context.Context, passphrase string) (*model.ShareResponse, error)
 	GetUser(ctx context.Context) (*model.User, error)
 	GetSessions(ctx context.Context) ([]string, error)
 }
@@ -146,7 +136,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateChannel(childComplexity, args["channel"].(string), args["password"].(*model.PasswordInput), args["enableLink"].(*bool), args["enablePSTN"].(*bool)), true
+		return e.complexity.Mutation.CreateChannel(childComplexity, args["title"].(string), args["enablePSTN"].(*bool)), true
 
 	case "Mutation.logoutAllSessions":
 		if e.complexity.Mutation.LogoutAllSessions == nil {
@@ -177,7 +167,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.StartRecordingSession(childComplexity, args["channel"].(string), args["uid"].(int)), true
+		return e.complexity.Mutation.StartRecordingSession(childComplexity, args["channel"].(string)), true
 
 	case "Mutation.stopRecordingSession":
 		if e.complexity.Mutation.StopRecordingSession == nil {
@@ -189,7 +179,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.StopRecordingSession(childComplexity, args["channel"].(string), args["uid"].(int), args["rid"].(string), args["sid"].(string)), true
+		return e.complexity.Mutation.StopRecordingSession(childComplexity, args["channel"].(string)), true
 
 	case "Mutation.updateUserName":
 		if e.complexity.Mutation.UpdateUserName == nil {
@@ -231,20 +221,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Passphrase.View(childComplexity), true
 
-	case "Password.host":
-		if e.complexity.Password.Host == nil {
-			break
-		}
-
-		return e.complexity.Password.Host(childComplexity), true
-
-	case "Password.view":
-		if e.complexity.Password.View == nil {
-			break
-		}
-
-		return e.complexity.Password.View(childComplexity), true
-
 	case "Query.getSessions":
 		if e.complexity.Query.GetSessions == nil {
 			break
@@ -269,19 +245,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.JoinChannel(childComplexity, args["channel"].(string), args["password"].(string)), true
-
-	case "Query.joinChannelWithPassphrase":
-		if e.complexity.Query.JoinChannelWithPassphrase == nil {
-			break
-		}
-
-		args, err := ec.field_Query_joinChannelWithPassphrase_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.JoinChannelWithPassphrase(childComplexity, args["passphrase"].(string)), true
+		return e.complexity.Query.JoinChannel(childComplexity, args["passphrase"].(string)), true
 
 	case "Query.share":
 		if e.complexity.Query.Share == nil {
@@ -293,21 +257,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Share(childComplexity, args["channel"].(string)), true
-
-	case "RecordingResult.rid":
-		if e.complexity.RecordingResult.Rid == nil {
-			break
-		}
-
-		return e.complexity.RecordingResult.Rid(childComplexity), true
-
-	case "RecordingResult.sid":
-		if e.complexity.RecordingResult.Sid == nil {
-			break
-		}
-
-		return e.complexity.RecordingResult.Sid(childComplexity), true
+		return e.complexity.Query.Share(childComplexity, args["passphrase"].(string)), true
 
 	case "Session.channel":
 		if e.complexity.Session.Channel == nil {
@@ -330,12 +280,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Session.MainUser(childComplexity), true
 
+	case "Session.passphrase":
+		if e.complexity.Session.Passphrase == nil {
+			break
+		}
+
+		return e.complexity.Session.Passphrase(childComplexity), true
+
 	case "Session.screenShare":
 		if e.complexity.Session.ScreenShare == nil {
 			break
 		}
 
 		return e.complexity.Session.ScreenShare(childComplexity), true
+
+	case "Session.title":
+		if e.complexity.Session.Title == nil {
+			break
+		}
+
+		return e.complexity.Session.Title(childComplexity), true
 
 	case "ShareResponse.passphrase":
 		if e.complexity.ShareResponse.Passphrase == nil {
@@ -344,19 +308,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ShareResponse.Passphrase(childComplexity), true
 
-	case "ShareResponse.password":
-		if e.complexity.ShareResponse.Password == nil {
-			break
-		}
-
-		return e.complexity.ShareResponse.Password(childComplexity), true
-
 	case "ShareResponse.pstn":
 		if e.complexity.ShareResponse.Pstn == nil {
 			break
 		}
 
 		return e.complexity.ShareResponse.Pstn(childComplexity), true
+
+	case "ShareResponse.title":
+		if e.complexity.ShareResponse.Title == nil {
+			break
+		}
+
+		return e.complexity.ShareResponse.Title(childComplexity), true
 
 	case "User.email":
 		if e.complexity.User.Email == nil {
@@ -458,12 +422,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	&ast.Source{Name: "graph/schema.graphqls", Input: `type Passphrase {
-  host: String!
-  view: String!
-}
-
-type Password {
-  host: String!
+  host: String
   view: String!
 }
 
@@ -472,14 +431,9 @@ type PSTN {
   dtmf: String!
 }
 
-input PasswordInput {
-  host: String!
-  view: String!
-}
-
 type ShareResponse {
-  password: Password
-  passphrase: Passphrase
+  passphrase: Passphrase!
+  title: String!
   pstn: PSTN
 }
 
@@ -490,7 +444,9 @@ type UserCredentials {
 }
 
 type Session { 
-  channel: String
+  passphrase: Passphrase!
+  channel: String!
+  title: String!
   isHost: Boolean!
   mainUser: UserCredentials!
   screenShare: UserCredentials!
@@ -501,24 +457,18 @@ type User {
   email: String!
 }
 
-type RecordingResult {
-  rid: String!
-  sid: String!
-}
-
 type Query {
-  joinChannel(channel: String!, password: String!): Session!
-  joinChannelWithPassphrase(passphrase: String!): Session!
-  share(channel: String!): ShareResponse!
+  joinChannel(passphrase: String!): Session!
+  share(passphrase: String!): ShareResponse!
   getUser: User!
   getSessions: [String!]
 }
 
 type Mutation {
-  createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true, enablePSTN: Boolean = false): ShareResponse!
+  createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
-  startRecordingSession(channel: String!, uid: Int!): RecordingResult!
-  stopRecordingSession(channel: String!, uid: Int!, rid: String!, sid: String!): String!
+  startRecordingSession(channel: String!): String!
+  stopRecordingSession(channel: String!): String!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
 }`, BuiltIn: false},
@@ -533,37 +483,21 @@ func (ec *executionContext) field_Mutation_createChannel_args(ctx context.Contex
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["channel"]; ok {
+	if tmp, ok := rawArgs["title"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["channel"] = arg0
-	var arg1 *model.PasswordInput
-	if tmp, ok := rawArgs["password"]; ok {
-		arg1, err = ec.unmarshalOPasswordInput2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPasswordInput(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["password"] = arg1
-	var arg2 *bool
-	if tmp, ok := rawArgs["enableLink"]; ok {
-		arg2, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["enableLink"] = arg2
-	var arg3 *bool
+	args["title"] = arg0
+	var arg1 *bool
 	if tmp, ok := rawArgs["enablePSTN"]; ok {
-		arg3, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["enablePSTN"] = arg3
+	args["enablePSTN"] = arg1
 	return args, nil
 }
 
@@ -592,14 +526,6 @@ func (ec *executionContext) field_Mutation_startRecordingSession_args(ctx contex
 		}
 	}
 	args["channel"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["uid"]; ok {
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["uid"] = arg1
 	return args, nil
 }
 
@@ -614,30 +540,6 @@ func (ec *executionContext) field_Mutation_stopRecordingSession_args(ctx context
 		}
 	}
 	args["channel"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["uid"]; ok {
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["uid"] = arg1
-	var arg2 string
-	if tmp, ok := rawArgs["rid"]; ok {
-		arg2, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["rid"] = arg2
-	var arg3 string
-	if tmp, ok := rawArgs["sid"]; ok {
-		arg3, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["sid"] = arg3
 	return args, nil
 }
 
@@ -669,7 +571,7 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_joinChannelWithPassphrase_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_joinChannel_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -683,39 +585,17 @@ func (ec *executionContext) field_Query_joinChannelWithPassphrase_args(ctx conte
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_joinChannel_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["channel"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["channel"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["password"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["password"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_share_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["channel"]; ok {
+	if tmp, ok := rawArgs["passphrase"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["channel"] = arg0
+	args["passphrase"] = arg0
 	return args, nil
 }
 
@@ -779,7 +659,7 @@ func (ec *executionContext) _Mutation_createChannel(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateChannel(rctx, args["channel"].(string), args["password"].(*model.PasswordInput), args["enableLink"].(*bool), args["enablePSTN"].(*bool))
+		return ec.resolvers.Mutation().CreateChannel(rctx, args["title"].(string), args["enablePSTN"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -861,7 +741,7 @@ func (ec *executionContext) _Mutation_startRecordingSession(ctx context.Context,
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().StartRecordingSession(rctx, args["channel"].(string), args["uid"].(int))
+		return ec.resolvers.Mutation().StartRecordingSession(rctx, args["channel"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -873,9 +753,9 @@ func (ec *executionContext) _Mutation_startRecordingSession(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.RecordingResult)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNRecordingResult2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐRecordingResult(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_stopRecordingSession(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -902,7 +782,7 @@ func (ec *executionContext) _Mutation_stopRecordingSession(ctx context.Context, 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().StopRecordingSession(rctx, args["channel"].(string), args["uid"].(int), args["rid"].(string), args["sid"].(string))
+		return ec.resolvers.Mutation().StopRecordingSession(rctx, args["channel"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1080,14 +960,11 @@ func (ec *executionContext) _Passphrase_host(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Passphrase_view(ctx context.Context, field graphql.CollectedField, obj *model.Passphrase) (ret graphql.Marshaler) {
@@ -1099,74 +976,6 @@ func (ec *executionContext) _Passphrase_view(ctx context.Context, field graphql.
 	}()
 	fc := &graphql.FieldContext{
 		Object:   "Passphrase",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.View, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Password_host(ctx context.Context, field graphql.CollectedField, obj *model.Password) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Password",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Host, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Password_view(ctx context.Context, field graphql.CollectedField, obj *model.Password) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Password",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -1216,48 +1025,7 @@ func (ec *executionContext) _Query_joinChannel(ctx context.Context, field graphq
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().JoinChannel(rctx, args["channel"].(string), args["password"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Session)
-	fc.Result = res
-	return ec.marshalNSession2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐSession(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_joinChannelWithPassphrase(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Query",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_joinChannelWithPassphrase_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().JoinChannelWithPassphrase(rctx, args["passphrase"].(string))
+		return ec.resolvers.Query().JoinChannel(rctx, args["passphrase"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1298,7 +1066,7 @@ func (ec *executionContext) _Query_share(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Share(rctx, args["channel"].(string))
+		return ec.resolvers.Query().Share(rctx, args["passphrase"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1449,7 +1217,7 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RecordingResult_rid(ctx context.Context, field graphql.CollectedField, obj *model.RecordingResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _Session_passphrase(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1457,7 +1225,7 @@ func (ec *executionContext) _RecordingResult_rid(ctx context.Context, field grap
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "RecordingResult",
+		Object:   "Session",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -1466,7 +1234,7 @@ func (ec *executionContext) _RecordingResult_rid(ctx context.Context, field grap
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Rid, nil
+		return obj.Passphrase, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1478,43 +1246,9 @@ func (ec *executionContext) _RecordingResult_rid(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*model.Passphrase)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _RecordingResult_sid(ctx context.Context, field graphql.CollectedField, obj *model.RecordingResult) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "RecordingResult",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Sid, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Session_channel(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
@@ -1541,11 +1275,48 @@ func (ec *executionContext) _Session_channel(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Session_title(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Session",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Session_isHost(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
@@ -1650,37 +1421,6 @@ func (ec *executionContext) _Session_screenShare(ctx context.Context, field grap
 	return ec.marshalNUserCredentials2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐUserCredentials(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ShareResponse_password(ctx context.Context, field graphql.CollectedField, obj *model.ShareResponse) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "ShareResponse",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Password, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.Password)
-	fc.Result = res
-	return ec.marshalOPassword2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassword(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _ShareResponse_passphrase(ctx context.Context, field graphql.CollectedField, obj *model.ShareResponse) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1705,11 +1445,48 @@ func (ec *executionContext) _ShareResponse_passphrase(ctx context.Context, field
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.Passphrase)
 	fc.Result = res
-	return ec.marshalOPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx, field.Selections, res)
+	return ec.marshalNPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ShareResponse_title(ctx context.Context, field graphql.CollectedField, obj *model.ShareResponse) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ShareResponse",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ShareResponse_pstn(ctx context.Context, field graphql.CollectedField, obj *model.ShareResponse) (ret graphql.Marshaler) {
@@ -2965,30 +2742,6 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputPasswordInput(ctx context.Context, obj interface{}) (model.PasswordInput, error) {
-	var it model.PasswordInput
-	var asMap = obj.(map[string]interface{})
-
-	for k, v := range asMap {
-		switch k {
-		case "host":
-			var err error
-			it.Host, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "view":
-			var err error
-			it.View, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		}
-	}
-
-	return it, nil
-}
-
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -3092,43 +2845,8 @@ func (ec *executionContext) _Passphrase(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = graphql.MarshalString("Passphrase")
 		case "host":
 			out.Values[i] = ec._Passphrase_host(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "view":
 			out.Values[i] = ec._Passphrase_view(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var passwordImplementors = []string{"Password"}
-
-func (ec *executionContext) _Password(ctx context.Context, sel ast.SelectionSet, obj *model.Password) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, passwordImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Password")
-		case "host":
-			out.Values[i] = ec._Password_host(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "view":
-			out.Values[i] = ec._Password_view(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -3167,20 +2885,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_joinChannel(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
-		case "joinChannelWithPassphrase":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_joinChannelWithPassphrase(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -3240,38 +2944,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	return out
 }
 
-var recordingResultImplementors = []string{"RecordingResult"}
-
-func (ec *executionContext) _RecordingResult(ctx context.Context, sel ast.SelectionSet, obj *model.RecordingResult) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, recordingResultImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("RecordingResult")
-		case "rid":
-			out.Values[i] = ec._RecordingResult_rid(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "sid":
-			out.Values[i] = ec._RecordingResult_sid(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var sessionImplementors = []string{"Session"}
 
 func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, obj *model.Session) graphql.Marshaler {
@@ -3283,8 +2955,21 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Session")
+		case "passphrase":
+			out.Values[i] = ec._Session_passphrase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "channel":
 			out.Values[i] = ec._Session_channel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "title":
+			out.Values[i] = ec._Session_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "isHost":
 			out.Values[i] = ec._Session_isHost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -3322,10 +3007,16 @@ func (ec *executionContext) _ShareResponse(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ShareResponse")
-		case "password":
-			out.Values[i] = ec._ShareResponse_password(ctx, field, obj)
 		case "passphrase":
 			out.Values[i] = ec._ShareResponse_passphrase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "title":
+			out.Values[i] = ec._ShareResponse_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "pstn":
 			out.Values[i] = ec._ShareResponse_pstn(ctx, field, obj)
 		default:
@@ -3678,18 +3369,18 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) marshalNRecordingResult2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐRecordingResult(ctx context.Context, sel ast.SelectionSet, v model.RecordingResult) graphql.Marshaler {
-	return ec._RecordingResult(ctx, sel, &v)
+func (ec *executionContext) marshalNPassphrase2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx context.Context, sel ast.SelectionSet, v model.Passphrase) graphql.Marshaler {
+	return ec._Passphrase(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRecordingResult2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐRecordingResult(ctx context.Context, sel ast.SelectionSet, v *model.RecordingResult) graphql.Marshaler {
+func (ec *executionContext) marshalNPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx context.Context, sel ast.SelectionSet, v *model.Passphrase) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
 		}
 		return graphql.Null
 	}
-	return ec._RecordingResult(ctx, sel, v)
+	return ec._Passphrase(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSession2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐSession(ctx context.Context, sel ast.SelectionSet, v model.Session) graphql.Marshaler {
@@ -4020,40 +3711,6 @@ func (ec *executionContext) marshalOPSTN2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora
 		return graphql.Null
 	}
 	return ec._PSTN(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOPassphrase2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx context.Context, sel ast.SelectionSet, v model.Passphrase) graphql.Marshaler {
-	return ec._Passphrase(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOPassphrase2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassphrase(ctx context.Context, sel ast.SelectionSet, v *model.Passphrase) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Passphrase(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOPassword2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassword(ctx context.Context, sel ast.SelectionSet, v model.Password) graphql.Marshaler {
-	return ec._Password(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOPassword2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPassword(ctx context.Context, sel ast.SelectionSet, v *model.Password) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Password(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOPasswordInput2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPasswordInput(ctx context.Context, v interface{}) (model.PasswordInput, error) {
-	return ec.unmarshalInputPasswordInput(ctx, v)
-}
-
-func (ec *executionContext) unmarshalOPasswordInput2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPasswordInput(ctx context.Context, v interface{}) (*model.PasswordInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalOPasswordInput2githubᚗcomᚋsamyakᚑjainᚋagora_backendᚋgraphᚋmodelᚐPasswordInput(ctx, v)
-	return &res, err
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

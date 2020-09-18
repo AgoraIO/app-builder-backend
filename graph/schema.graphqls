@@ -1,10 +1,5 @@
 type Passphrase {
-  host: String!
-  view: String!
-}
-
-type Password {
-  host: String!
+  host: String
   view: String!
 }
 
@@ -13,14 +8,9 @@ type PSTN {
   dtmf: String!
 }
 
-input PasswordInput {
-  host: String!
-  view: String!
-}
-
 type ShareResponse {
-  password: Password
-  passphrase: Passphrase
+  passphrase: Passphrase!
+  title: String!
   pstn: PSTN
 }
 
@@ -31,7 +21,8 @@ type UserCredentials {
 }
 
 type Session { 
-  channel: String
+  channel: String!
+  title: String!
   isHost: Boolean!
   mainUser: UserCredentials!
   screenShare: UserCredentials!
@@ -42,24 +33,18 @@ type User {
   email: String!
 }
 
-type RecordingResult {
-  rid: String!
-  sid: String!
-}
-
 type Query {
-  joinChannel(channel: String!, password: String!): Session!
-  joinChannelWithPassphrase(passphrase: String!): Session!
-  share(channel: String!): ShareResponse!
+  joinChannel(passphrase: String!): Session!
+  share(passphrase: String!): ShareResponse!
   getUser: User!
   getSessions: [String!]
 }
 
 type Mutation {
-  createChannel(channel: String!, password: PasswordInput, enableLink: Boolean = true, enablePSTN: Boolean = false): ShareResponse!
+  createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
-  startRecordingSession(channel: String!, uid: Int!): RecordingResult!
-  stopRecordingSession(channel: String!, uid: Int!, rid: String!, sid: String!): String!
+  startRecordingSession(channel: String!): String!
+  stopRecordingSession(channel: String!): String!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
 }

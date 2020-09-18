@@ -15,6 +15,7 @@ import (
 type Recorder struct {
 	http.Client
 	Channel string
+	Token   string
 	UID     int
 	RID     string
 	SID     string
@@ -22,6 +23,14 @@ type Recorder struct {
 
 // Acquire runs the acquire endpoint for Cloud Recording
 func (rec *Recorder) Acquire() error {
+	creds, err := GenerateUserCredentials(rec.Channel, false)
+	if err != nil {
+		return err
+	}
+
+	rec.UID = creds.UID
+	rec.Token = creds.Rtc
+
 	requestBody := fmt.Sprintf(`
 		{
 			"cname": "%s",
@@ -58,11 +67,6 @@ func (rec *Recorder) Acquire() error {
 
 // Start starts the recording
 func (rec *Recorder) Start() error {
-	token, err := GetRtcToken(rec.Channel, rec.UID)
-	if err != nil {
-		return err
-	}
-
 	currentTime := strconv.FormatInt(time.Now().Unix(), 10)
 
 	requestBody := fmt.Sprintf(`
@@ -86,7 +90,7 @@ func (rec *Recorder) Start() error {
 				}
 			}
 		}
-	`, rec.Channel, rec.UID, token, viper.GetString("BUCKET_NAME"),
+	`, rec.Channel, rec.UID, rec.Token, viper.GetString("BUCKET_NAME"),
 		viper.GetString("BUCKET_ACCESS_KEY"), viper.GetString("BUCKET_ACCESS_SECRET"),
 		rec.Channel, currentTime)
 

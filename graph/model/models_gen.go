@@ -8,35 +8,22 @@ type Pstn struct {
 }
 
 type Passphrase struct {
-	Host string `json:"host"`
-	View string `json:"view"`
-}
-
-type Password struct {
-	Host string `json:"host"`
-	View string `json:"view"`
-}
-
-type PasswordInput struct {
-	Host string `json:"host"`
-	View string `json:"view"`
-}
-
-type RecordingResult struct {
-	Rid string `json:"rid"`
-	Sid string `json:"sid"`
+	Host *string `json:"host"`
+	View string  `json:"view"`
 }
 
 type Session struct {
-	Channel     *string          `json:"channel"`
+	Passphrase  *Passphrase      `json:"passphrase"`
+	Channel     string           `json:"channel"`
+	Title       string           `json:"title"`
 	IsHost      bool             `json:"isHost"`
 	MainUser    *UserCredentials `json:"mainUser"`
 	ScreenShare *UserCredentials `json:"screenShare"`
 }
 
 type ShareResponse struct {
-	Password   *Password   `json:"password"`
 	Passphrase *Passphrase `json:"passphrase"`
+	Title      string      `json:"title"`
 	Pstn       *Pstn       `json:"pstn"`
 }
 
