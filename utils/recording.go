@@ -13,7 +13,7 @@ import (
 
 // Recorder manages cloud recording
 type Recorder struct {
-	*http.Client
+	http.Client
 	Channel string
 	UID     int
 	RID     string
@@ -74,7 +74,7 @@ func (rec *Recorder) Start() error {
 				"recordingConfig": {
 					"maxIdleTime": 30,
 					"streamTypes": 2,
-					"channelType": 1,
+					"channelType": 1
 				},
 				"storageConfig": {
 					"vendor": 1, 
@@ -108,6 +108,7 @@ func (rec *Recorder) Start() error {
 
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
+	rec.SID = result["sid"]
 
 	return nil
 }
