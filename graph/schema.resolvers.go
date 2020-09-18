@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	"github.com/samyak-jain/agora_backend/graph/generated"
@@ -23,7 +22,11 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 	}
 
 	var pstnResponse *model.Pstn
-	var dtmfResult sql.NullString
+	var newChannel *models.Channel
+
+	hostPhrase := uuid.NewV4().String()
+	viewPhrase := uuid.NewV4().String()
+	channelName := uuid.NewV4().String()
 
 	if *enablePstn {
 		dtmfResult, err := utils.GenerateDTMF()
@@ -36,21 +39,24 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 			Dtmf:   *dtmfResult,
 		}
 
+		newChannel = &models.Channel{
+			Title:            title,
+			Name:             channelName,
+			HostPassphrase:   hostPhrase,
+			ViewerPassphrase: viewPhrase,
+			DTMF:             *dtmfResult,
+			Hosts:            []models.User{*authUser},
+		}
+
 	} else {
 		pstnResponse = nil
-	}
-
-	hostPhrase := uuid.NewV4().String()
-	viewPhrase := uuid.NewV4().String()
-	channelName := uuid.NewV4().String()
-
-	newChannel := &models.Channel{
-		Title:            title,
-		Name:             channelName,
-		HostPassphrase:   hostPhrase,
-		ViewerPassphrase: viewPhrase,
-		DTMF:             dtmfResult,
-		Hosts:            []models.User{*authUser},
+		newChannel = &models.Channel{
+			Title:            title,
+			Name:             channelName,
+			HostPassphrase:   hostPhrase,
+			ViewerPassphrase: viewPhrase,
+			Hosts:            []models.User{*authUser},
+		}
 	}
 
 	r.DB.Create(newChannel)
@@ -270,10 +276,10 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 	}
 
 	var pstnResult *model.Pstn
-	if channelData.DTMF.Valid {
+	if channelData.DTMF != "" {
 		pstnResult = &model.Pstn{
 			Number: "+17018052515",
-			Dtmf:   channelData.DTMF.String,
+			Dtmf:   channelData.DTMF,
 		}
 	} else {
 		pstnResult = nil
