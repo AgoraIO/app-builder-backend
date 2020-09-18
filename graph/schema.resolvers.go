@@ -65,7 +65,8 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, channel string, pa
 	}
 
 	if dtmfResult == nil {
-		*dtmfResult = ""
+		tmpString := ""
+		dtmfResult = &tmpString
 	}
 
 	newChannel := &models.Channel{
