@@ -4,6 +4,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/mux"
+	"github.com/urfave/negroni"
+
 	"github.com/rs/cors"
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/routes"
@@ -14,7 +17,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/go-chi/chi"
 	"github.com/samyak-jain/agora_backend/graph"
 	"github.com/samyak-jain/agora_backend/graph/generated"
 )
@@ -32,16 +34,7 @@ func main() {
 		return
 	}
 
-	router := chi.NewRouter()
-
-	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-		AllowedHeaders:   []string{"authorization", "content-type"},
-		// Enable Debugging for testing, consider disabling in production
-		Debug: true,
-	}).Handler)
-	router.Use(middleware.AuthHandler(database))
+	router := mux.NewRouter()
 
 	config := generated.Config{
 		Resolvers: &graph.Resolver{DB: database},
@@ -50,14 +43,25 @@ func main() {
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
 	requestHandler := routes.Router{DB: database}
 
-	router.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	router.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
-	router.Handle("/oauth/web", http.HandlerFunc(requestHandler.WebOAuthHandler))
-	router.Handle("/oauth/desktop", http.HandlerFunc(requestHandler.DesktopOAuthHandler))
-	router.Handle("/oauth/mobile", http.HandlerFunc(requestHandler.MobileOAuthHandler))
-	router.Handle("/pstnHandle", http.HandlerFunc(requestHandler.DTMFHandler))
+	router.HandleFunc("/oauth/web", requestHandler.WebOAuthHandler)
+	router.HandleFunc("/oauth/desktop", http.HandlerFunc(requestHandler.DesktopOAuthHandler))
+	router.HandleFunc("/oauth/mobile", http.HandlerFunc(requestHandler.MobileOAuthHandler))
+	router.HandleFunc("/pstnHandle", http.HandlerFunc(requestHandler.DTMFHandler))
+
+	middlewareHandler := negroni.Classic()
+	middlewareHandler.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"authorization", "content-type"},
+		// Enable Debugging for testing, consider disabling in production
+		Debug: true,
+	}))
+	middlewareHandler.Use(middleware.AuthHandler(database))
+	middlewareHandler.UseHandler(router)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+	log.Fatal(http.ListenAndServe(":"+port, middlewareHandler))
 }
