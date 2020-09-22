@@ -44,8 +44,8 @@ type Query {
 type Mutation {
   createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
-  startRecordingSession(channel: String!): String!
-  stopRecordingSession(channel: String!): String!
+  startRecordingSession(passphrase: String!): String!
+  stopRecordingSession(passphrase: String!): String!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
 }

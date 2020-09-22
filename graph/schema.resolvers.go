@@ -58,7 +58,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 			DTMF:             *dtmfResult,
-			Hosts:            []models.User{*authUser},
+			Hosts:            *authUser,
 		}
 
 	} else {
@@ -68,11 +68,12 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 			Name:             channel,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
-			Hosts:            []models.User{*authUser},
+			Hosts:            *authUser,
 		}
 	}
 
 	r.DB.Create(newChannel)
+	r.DB.Save(newChannel)
 
 	return &model.ShareResponse{
 		Passphrase: &model.Passphrase{
@@ -102,32 +103,30 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 	}, nil
 }
 
-func (r *mutationResolver) StartRecordingSession(ctx context.Context, channel string) (string, error) {
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		return "", errors.New("Invalid Token")
+func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase string) (string, error) {
+	var channelData models.Channel
+	var host bool
+
+	if passphrase == "" {
+		return "", errors.New("Passphrase cannot be empty")
 	}
 
-	var channelData *models.Channel
-	if err := r.DB.Where("name = ?", channel).First(channelData).Error; err != nil {
-		return "", err
-	}
-
-	r.DB.Preload("Hosts").Find(&channelData)
-
-	userIndex := -1
-	for index := range channelData.Hosts {
-		if channelData.Hosts[index].Email == authUser.Email {
-			userIndex = index
+	if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+		if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+			return "", errors.New("Invalid passphrase")
 		}
+
+		host = false
+	} else {
+		host = true
 	}
 
-	if userIndex == -1 {
+	if !host {
 		return "", errors.New("Unauthorised to record channel")
 	}
 
 	recorder := &utils.Recorder{}
-	recorder.Channel = channel
+	recorder.Channel = channelData.Name
 
 	err := recorder.Acquire()
 	if err != nil {
@@ -139,43 +138,43 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, channel st
 		return "", err
 	}
 
-	r.DB.Model(&channelData).Update("Recording", &models.Recording{
+	if err := r.DB.Model(&channelData).Update("Recording", &models.Recording{
 		UID: recorder.UID,
 		SID: recorder.SID,
 		RID: recorder.RID,
-	})
+	}).Error; err != nil {
+		return "", err
+	}
 
 	return "success", nil
 }
 
-func (r *mutationResolver) StopRecordingSession(ctx context.Context, channel string) (string, error) {
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		return "", errors.New("Invalid Token")
+func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase string) (string, error) {
+	var channelData models.Channel
+	var host bool
+
+	if passphrase == "" {
+		return "", errors.New("Passphrase cannot be empty")
 	}
 
-	var channelData *models.Channel
-	if err := r.DB.Where("name = ?", channel).First(channelData).Error; err != nil {
-		return "", err
-	}
-
-	r.DB.Preload("Hosts").Find(&channelData)
-
-	userIndex := -1
-	for index := range channelData.Hosts {
-		if channelData.Hosts[index].Email == authUser.Email {
-			userIndex = index
+	if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+		if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+			return "", errors.New("Invalid passphrase")
 		}
+
+		host = false
+	} else {
+		host = true
 	}
 
-	if userIndex == -1 {
+	if !host {
 		return "", errors.New("Unauthorised to record channel")
 	}
 
-	var record *models.Recording
+	var record models.Recording
 	r.DB.Model(&channelData).Related(&record)
 
-	err := utils.Stop(channel, record.UID, record.RID, record.SID)
+	err := utils.Stop(channelData.Name, record.UID, record.RID, record.SID)
 	if err != nil {
 		return "", err
 	}

@@ -13,7 +13,7 @@ type Channel struct {
 	ViewerPassphrase string
 	DTMF             string
 	Recording        Recording
-	Hosts            []User
+	Hosts            User
 }
 
 // Recording contains the details ßof the recording session

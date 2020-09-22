@@ -47,8 +47,8 @@ type ComplexityRoot struct {
 		CreateChannel         func(childComplexity int, title string, enablePstn *bool) int
 		LogoutAllSessions     func(childComplexity int) int
 		LogoutSession         func(childComplexity int, token string) int
-		StartRecordingSession func(childComplexity int, channel string) int
-		StopRecordingSession  func(childComplexity int, channel string) int
+		StartRecordingSession func(childComplexity int, passphrase string) int
+		StopRecordingSession  func(childComplexity int, passphrase string) int
 		UpdateUserName        func(childComplexity int, name string) int
 	}
 
@@ -99,8 +99,8 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error)
 	UpdateUserName(ctx context.Context, name string) (*model.User, error)
-	StartRecordingSession(ctx context.Context, channel string) (string, error)
-	StopRecordingSession(ctx context.Context, channel string) (string, error)
+	StartRecordingSession(ctx context.Context, passphrase string) (string, error)
+	StopRecordingSession(ctx context.Context, passphrase string) (string, error)
 	LogoutSession(ctx context.Context, token string) ([]string, error)
 	LogoutAllSessions(ctx context.Context) (*string, error)
 }
@@ -167,7 +167,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.StartRecordingSession(childComplexity, args["channel"].(string)), true
+		return e.complexity.Mutation.StartRecordingSession(childComplexity, args["passphrase"].(string)), true
 
 	case "Mutation.stopRecordingSession":
 		if e.complexity.Mutation.StopRecordingSession == nil {
@@ -179,7 +179,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.StopRecordingSession(childComplexity, args["channel"].(string)), true
+		return e.complexity.Mutation.StopRecordingSession(childComplexity, args["passphrase"].(string)), true
 
 	case "Mutation.updateUserName":
 		if e.complexity.Mutation.UpdateUserName == nil {
@@ -467,8 +467,8 @@ type Query {
 type Mutation {
   createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
-  startRecordingSession(channel: String!): String!
-  stopRecordingSession(channel: String!): String!
+  startRecordingSession(passphrase: String!): String!
+  stopRecordingSession(passphrase: String!): String!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
 }`, BuiltIn: false},
@@ -519,13 +519,13 @@ func (ec *executionContext) field_Mutation_startRecordingSession_args(ctx contex
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["channel"]; ok {
+	if tmp, ok := rawArgs["passphrase"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["channel"] = arg0
+	args["passphrase"] = arg0
 	return args, nil
 }
 
@@ -533,13 +533,13 @@ func (ec *executionContext) field_Mutation_stopRecordingSession_args(ctx context
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["channel"]; ok {
+	if tmp, ok := rawArgs["passphrase"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["channel"] = arg0
+	args["passphrase"] = arg0
 	return args, nil
 }
 
@@ -741,7 +741,7 @@ func (ec *executionContext) _Mutation_startRecordingSession(ctx context.Context,
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().StartRecordingSession(rctx, args["channel"].(string))
+		return ec.resolvers.Mutation().StartRecordingSession(rctx, args["passphrase"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -782,7 +782,7 @@ func (ec *executionContext) _Mutation_stopRecordingSession(ctx context.Context, 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().StopRecordingSession(rctx, args["channel"].(string))
+		return ec.resolvers.Mutation().StopRecordingSession(rctx, args["passphrase"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
