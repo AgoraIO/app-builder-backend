@@ -1,4 +1,12 @@
 {
     "name": "App Builder",
-    "repository": "https://github.com/samyak-jain/AgoraBackend"
+    "repository": "https://github.com/samyak-jain/AgoraBackend",
+    "addons": [
+        {
+            "plan": "heroku-postgresql:hobby-dev",
+            "options": {
+                "version": "12.4"
+            }
+        }
+    ]
 }
