@@ -64,7 +64,7 @@ func main() {
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"authorization", "content-type"},
 		// Enable Debugging for testing, consider disabling in production
-		Debug: true,
+		Debug: viper.GetBool("DEBUG"),
 	}))
 	middlewareHandler.Use(middleware.AuthHandler(database))
 	// middlewareHandler.Use(hlog.AccessHandler())

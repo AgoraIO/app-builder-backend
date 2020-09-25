@@ -8,15 +8,15 @@
 <div align="center">
 
   [![Status](https://img.shields.io/badge/status-active-success.svg)]() 
-  [![GitHub Issues](https://img.shields.io/github/issues/kylelobo/The-Documentation-Compendium.svg)](https://github.com/samyak-jain/AgoraBackend/issues)
-  [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kylelobo/The-Documentation-Compendium.svg)](https://github.com/samyak-jain/AgoraBackend/pulls)
+  [![GitHub Issues](https://img.shields.io/github/issues/samyak-jain/AgoraBackend.svg)](https://github.com/samyak-jain/AgoraBackend/issues)
+  [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/samyak-jain/AgoraBackend.svg)](https://github.com/samyak-jain/AgoraBackend/pulls)
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 
 </div>
 
 ---
 
-<p align="center"> Few lines describing your project.
+<p align="center"> The Real-Time Engagement Platform for meaningful human connections.
     <br> 
 </p>
 
@@ -26,10 +26,7 @@
 - [Deployment](#deployment)
 - [Usage](#usage)
 - [Built Using](#built_using)
-- [TODO](../TODO.md)
-- [Contributing](../CONTRIBUTING.md)
 - [Authors](#authors)
-- [Acknowledgments](#acknowledgement)
 
 ## 🧐 About <a name = "about"></a>
 Write about 1-2 paragraphs describing the purpose of your project.

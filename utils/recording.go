@@ -85,7 +85,7 @@ func (rec *Recorder) Start() error {
 						"bitrate": 2260, 
 						"fps": 15, 
 						"mixedVideoLayout": 1,
-						"backgroundColor": "#FF0000"
+						"backgroundColor": "#000000"
 					}
 				},
 				"storageConfig": {

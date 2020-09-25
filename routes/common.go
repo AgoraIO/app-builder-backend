@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -64,6 +65,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	}
 
 	redirect := parsedState.Get("redirect")
+	backendURL := filepath.Clean(parsedState.Get("backend")) // Remove trailing slash
 	var oauthConfig *oauth2.Config
 	var userInfoURL string
 
@@ -74,12 +76,9 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 			ClientSecret: viper.GetString("CLIENT_SECRET"),
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
 			Endpoint:     google.Endpoint,
-			RedirectURL:  viper.GetString("REDIRECT_URL") + platform,
+			RedirectURL:  backendURL + "/oauth/" + platform,
 		}
 		userInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
-
-	case "microsoft":
-		oauthConfig = &oauth2.Config{}
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 		log.Warn().Msg("Unknown state parameter passed")
