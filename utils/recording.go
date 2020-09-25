@@ -78,7 +78,15 @@ func (rec *Recorder) Start() error {
 				"recordingConfig": {
 					"maxIdleTime": 30,
 					"streamTypes": 2,
-					"channelType": 1
+					"channelType": 1,
+					"transcodingConfig": {
+						"height": 720, 
+						"width": 1280,
+						"bitrate": 2260, 
+						"fps": 15, 
+						"mixedVideoLayout": 1,
+						"backgroundColor": "#FF0000"
+					}
 				},
 				"storageConfig": {
 					"vendor": 1, 
