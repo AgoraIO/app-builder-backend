@@ -5,15 +5,16 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/urfave/negroni"
 )
 
-var userContextKey = &contextKey{"user"}
-
 type contextKey struct {
 	name string
 }
+
+var userContextKey = &contextKey{"user"}
 
 // AuthHandler is a middleware for authentication
 func AuthHandler(db *models.Database) negroni.HandlerFunc {
@@ -26,6 +27,7 @@ func AuthHandler(db *models.Database) negroni.HandlerFunc {
 		header := r.Header.Get("Authorization")
 
 		if header == "" {
+			log.Debug().Msg("No Token Provided")
 			next.ServeHTTP(w, r)
 		} else {
 			splitToken := strings.Split(header, "Bearer ")
@@ -36,8 +38,10 @@ func AuthHandler(db *models.Database) negroni.HandlerFunc {
 
 			if db.Where("token_id = ?", token).First(&tokenData).RecordNotFound() {
 				w.WriteHeader(http.StatusUnauthorized)
+				log.Debug().Str("token", token).Msg("Passed Invalid token")
 			} else if err := db.Where("email = ?", tokenData.UserEmail).First(&user).Error; err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				log.Error().Str("email", tokenData.UserEmail).Str("token", token).Msg("Email does not exist for the provided token")
 			} else {
 				ctx := context.WithValue(r.Context(), userContextKey, &user)
 				next.ServeHTTP(w, r.WithContext(ctx))

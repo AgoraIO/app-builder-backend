@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/middleware"
@@ -15,9 +16,13 @@ import (
 	"github.com/samyak-jain/agora_backend/utils"
 )
 
+var errInternalServer error = errors.New("Internal Server Error")
+var errBadRequest error = errors.New("Bad Request")
+
 func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
+		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
@@ -26,17 +31,20 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 
 	hostPhrase, err := utils.GenerateUUID()
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("Host Phrase generation failed")
+		return nil, errInternalServer
 	}
 
 	viewPhrase, err := utils.GenerateUUID()
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("View Phrase generation failed")
+		return nil, errInternalServer
 	}
 
 	channelName, err := utils.GenerateUUID()
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("Channel Name generation failed")
+		return nil, errInternalServer
 	}
 
 	channel := strings.ReplaceAll(channelName, "-", "")
@@ -44,7 +52,8 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 	if *enablePstn {
 		dtmfResult, err := utils.GenerateDTMF()
 		if err != nil {
-			return nil, err
+			log.Error().Err(err).Msg("DTMF generation failed")
+			return nil, errInternalServer
 		}
 
 		pstnResponse = &model.Pstn{
@@ -72,8 +81,10 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		}
 	}
 
-	r.DB.Create(newChannel)
-	r.DB.Save(newChannel)
+	if err := r.DB.Create(newChannel).Error; err != nil {
+		log.Error().Err(err).Msg("Adding new channel to DB Failed")
+		return nil, errInternalServer
+	}
 
 	return &model.ShareResponse{
 		Passphrase: &model.Passphrase{
@@ -89,12 +100,14 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*model.User, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
+		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
 	user := &models.User{Email: authUser.Email}
 	if err := r.DB.Model(&user).Update("name", name).Error; err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("Username update failed")
+		return nil, errInternalServer
 	}
 
 	return &model.User{
@@ -113,6 +126,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 
 	if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
 		if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+			log.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
 			return "", errors.New("Invalid passphrase")
 		}
 
@@ -122,6 +136,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	}
 
 	if !host {
+		log.Debug().Str("passphrase", passphrase).Str("channel", channelData.Name).Msg("Unauthorized to record channel")
 		return "", errors.New("Unauthorised to record channel")
 	}
 
@@ -130,12 +145,14 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 
 	err := recorder.Acquire()
 	if err != nil {
-		return "", err
+		log.Error().Err(err).Msg("Acquire Failed")
+		return "", errInternalServer
 	}
 
 	err = recorder.Start()
 	if err != nil {
-		return "", err
+		log.Error().Err(err).Msg("Start Failed")
+		return "", errInternalServer
 	}
 
 	if err := r.DB.Model(&channelData).Update("Recording", &models.Recording{
@@ -143,7 +160,8 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		SID: recorder.SID,
 		RID: recorder.RID,
 	}).Error; err != nil {
-		return "", err
+		log.Error().Err(err).Msg("Updating database for recording failed")
+		return "", errInternalServer
 	}
 
 	return "success", nil
@@ -159,6 +177,7 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 
 	if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
 		if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+			log.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
 			return "", errors.New("Invalid passphrase")
 		}
 
@@ -168,6 +187,7 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 	}
 
 	if !host {
+		log.Debug().Str("passphrase", passphrase).Str("channel", channelData.Name).Msg("Unauthorized to record channel")
 		return "", errors.New("Unauthorised to record channel")
 	}
 
@@ -176,7 +196,8 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 
 	err := utils.Stop(channelData.Name, record.UID, record.RID, record.SID)
 	if err != nil {
-		return "", err
+		log.Error().Err(err).Msg("Stop recording failed")
+		return "", errInternalServer
 	}
 
 	return "success", nil
@@ -185,12 +206,16 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]string, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
+		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
 	tokenIndex := -1
 
-	r.DB.Preload("Tokens").Find(&authUser)
+	if err := r.DB.Preload("Tokens").Find(&authUser).Error; err != nil {
+		log.Error().Err(err).Msg("Could not load token association")
+		return nil, errInternalServer
+	}
 
 	for index := range authUser.Tokens {
 		if authUser.Tokens[index].TokenID == token {
@@ -199,12 +224,16 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 	}
 
 	if tokenIndex == -1 {
-		return nil, errors.New("Invalid token")
+		log.Debug().Str("Email", authUser.Email).Msg("Token does not exist")
+		return nil, errBadRequest
 	}
 
-	r.DB.Delete(&models.Token{
+	if err := r.DB.Delete(&models.Token{
 		TokenID: token,
-	})
+	}).Error; err != nil {
+		log.Error().Err(err).Msg("Coudl not delete token from database")
+		return nil, errInternalServer
+	}
 
 	return authUser.GetAllTokens(), nil
 }
@@ -212,10 +241,14 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 func (r *mutationResolver) LogoutAllSessions(ctx context.Context) (*string, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
+		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
-	r.DB.Where("user_email = ?", authUser.Email).Delete(models.Token{})
+	if err := r.DB.Where("user_email = ?", authUser.Email).Delete(models.Token{}).Error; err != nil {
+		log.Error().Err(err).Msg("Could not delete all the tokens from the database")
+		return nil, errInternalServer
+	}
 
 	return nil, nil
 }
@@ -230,6 +263,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 
 	if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
 		if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+			log.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
 			return nil, errors.New("Invalid passphrase")
 		}
 
@@ -240,12 +274,14 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 
 	mainUser, err := utils.GenerateUserCredentials(channelData.Name, true)
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("Could not generate main user credentials")
+		return nil, errInternalServer
 	}
 
 	screenShare, err := utils.GenerateUserCredentials(channelData.Name, false)
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("Could not generate screenshare user credentails")
+		return nil, errInternalServer
 	}
 
 	return &model.Session{
@@ -258,11 +294,6 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 }
 
 func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.ShareResponse, error) {
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		return nil, errors.New("Invalid Token")
-	}
-
 	var channelData models.Channel
 	var host bool
 
@@ -272,6 +303,7 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 
 	if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
 		if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
+			log.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
 			return nil, errors.New("Invalid passphrase")
 		}
 
@@ -311,6 +343,7 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
+		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
@@ -323,10 +356,14 @@ func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
 func (r *queryResolver) GetSessions(ctx context.Context) ([]string, error) {
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
+		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
-	r.DB.Preload("Tokens").Find(&authUser)
+	if err := r.DB.Preload("Tokens").Find(&authUser).Error; err != nil {
+		log.Error().Err(err).Msg("Could not preload all the tokens")
+		return nil, errInternalServer
+	}
 
 	return authUser.GetAllTokens(), nil
 }

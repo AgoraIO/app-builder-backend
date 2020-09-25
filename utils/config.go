@@ -26,15 +26,24 @@ func SetupConfig() {
 }
 
 // GetPORT fetches the PORT
-func GetPORT() string {
+func GetPORT(defaultPort string) string {
 	if port := viper.GetString("PORT"); port != "" {
 		return port
 	}
 
-	return "8080"
+	return defaultPort
 }
 
 // GetDBURL fetches the database string
 func GetDBURL() string {
 	return viper.GetString("DATABASE_URL")
+}
+
+// GetMigrationSource gets the url from which the database migrations are fetched from
+func GetMigrationSource() string {
+	if source := viper.GetString("MIGRATION_SOURCE"); source != "" {
+		return source
+	}
+
+	return "file://db/migrations"
 }

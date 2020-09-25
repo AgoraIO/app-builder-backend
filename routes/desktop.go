@@ -2,30 +2,23 @@ package routes
 
 import (
 	"fmt"
-	"log"
+	"html/template"
 	"net/http"
-	"net/url"
 )
 
 // DesktopOAuthHandler is a REST route that is called when the oauth provider redirects to here and provides the code
 func (o *Router) DesktopOAuthHandler(w http.ResponseWriter, r *http.Request) {
-	redirect, token, err := Handler(w, r, o.DB, "desktop")
+	_, token, err := Handler(w, r, o.DB, "desktop")
 	if err != nil {
-		log.Print(err)
-		fmt.Fprint(w, err)
+		fmt.Fprint(w, "Internal Server Error")
 		return
 	}
 
-	newURL, err := url.Parse(*redirect)
+	t, err := template.ParseFiles("web/desktop.html")
 	if err != nil {
-		log.Print(err)
-		fmt.Fprint(w, err)
+		fmt.Fprint(w, "Internal Server Error")
 		return
 	}
 
-	query := newURL.Query()
-	query.Set("token", *token)
-	newURL.RawQuery = query.Encode()
-
-	http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
+	t.Execute(w, TokenTemplate{*token})
 }

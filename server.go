@@ -1,8 +1,12 @@
 package main
 
 import (
-	"log"
 	"net/http"
+	"os"
+
+	"github.com/spf13/viper"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
@@ -19,6 +23,9 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/samyak-jain/agora_backend/graph"
 	"github.com/samyak-jain/agora_backend/graph/generated"
+
+	"github.com/newrelic/go-agent/v3/integrations/nrgorilla"
+	newrelic "github.com/newrelic/go-agent/v3/newrelic"
 )
 
 const defaultPort = "8080"
@@ -26,11 +33,11 @@ const defaultPort = "8080"
 func main() {
 	utils.SetupConfig()
 
-	port := utils.GetPORT()
+	port := utils.GetPORT(defaultPort)
 
 	database, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {
-		log.Print(err)
+		log.Fatal().Err(err).Msg("Error initializing database")
 		return
 	}
 
@@ -60,8 +67,25 @@ func main() {
 		Debug: true,
 	}))
 	middlewareHandler.Use(middleware.AuthHandler(database))
+	// middlewareHandler.Use(hlog.AccessHandler())
+
+	if viper.GetBool("ENABLE_NEWRELIC_MONITORING") {
+		nrAgent, err := newrelic.NewApplication(
+			newrelic.ConfigAppName(viper.GetString("NEWRELIC_APPNAME")),
+			newrelic.ConfigLicense(viper.GetString("NEWRELIC_LICENSE")),
+			newrelic.ConfigDebugLogger(os.Stdout),
+		)
+
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error initializing New Relic Agent")
+			return
+		}
+
+		router.Use(nrgorilla.Middleware(nrAgent))
+	}
+
 	middlewareHandler.UseHandler(router)
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, middlewareHandler))
+	log.Debug().Str("PORT", port)
+	log.Fatal().Err(http.ListenAndServe(":"+port, middlewareHandler))
 }
