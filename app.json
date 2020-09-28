@@ -49,6 +49,10 @@
         "PSTN_PASSWORD": {
             "description": "Password of your Turbobridge account. Required for PSTN Integration",
             "required": false
+        },
+        "SCHEME": {
+            "description": "Contains project name. Used for deep links",
+            "required": true
         }
     }
 }
