@@ -35,6 +35,7 @@ type Router struct {
 // TokenTemplate is a struct that will be used to template the token into the html that will be served for Desktop and Mobile
 type TokenTemplate struct {
 	Token string
+	Scheme string
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth

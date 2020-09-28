@@ -9,7 +9,7 @@
 <body>
     <p>Sending data to parent</p>
     <script>
-        window.location = "my-scheme://my-host/auth-token/" + "{{.Token}}"
+        window.location = "{{.Scheme}}://my-host/auth-token/" + "{{.Token}}"
     </script>
 </body>
 

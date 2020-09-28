@@ -20,5 +20,7 @@ func (o *Router) DesktopOAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t.Execute(w, TokenTemplate{*token})
+	t.Execute(w, TokenTemplate{
+		Token: *token,
+	})
 }
