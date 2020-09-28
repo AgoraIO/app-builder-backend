@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"text/template"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -12,6 +13,21 @@ import (
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/utils"
 )
+
+type PSTNTemplate struct {
+	Host string
+}
+
+// PSTNConfig returns the reuqired configuration to setup VoiceAPI
+func (o *Router) PSTNConfig(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("web/collectID.json")
+	if err != nil {
+		fmt.Fprint(w, "Internal Server Error")
+		return
+	}
+
+	t.Execute(w, PSTNTemplate{r.Host})
+}
 
 // DTMFHandler handles DTMF
 func (o *Router) DTMFHandler(w http.ResponseWriter, r *http.Request) {

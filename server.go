@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/http/httputil"
 	"os"
 
 	"github.com/spf13/viper"
@@ -52,10 +53,19 @@ func main() {
 
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	router.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
+	router.HandleFunc("/test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestDump, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			log.Error().Err(err).Msg("Error reading request")
+			return
+		}
+		log.Info().Interface("request", string(requestDump)).Msg("Request Details")
+	}))
 	router.Handle("/query", srv)
-	router.HandleFunc("/oauth/web", requestHandler.WebOAuthHandler)
+	router.HandleFunc("/oauth/web", http.HandlerFunc(requestHandler.WebOAuthHandler))
 	router.HandleFunc("/oauth/desktop", http.HandlerFunc(requestHandler.DesktopOAuthHandler))
 	router.HandleFunc("/oauth/mobile", http.HandlerFunc(requestHandler.MobileOAuthHandler))
+	router.HandleFunc("/pstnConfig", http.HandlerFunc(requestHandler.PSTNConfig))
 	router.HandleFunc("/pstnHandle", http.HandlerFunc(requestHandler.DTMFHandler))
 
 	middlewareHandler := negroni.Classic()
