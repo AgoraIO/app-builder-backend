@@ -1,4 +1,4 @@
-package main
+package migrations
 
 import (
 	"log"
@@ -7,7 +7,8 @@ import (
 	"github.com/samyak-jain/agora_backend/utils"
 )
 
-func main() {
+// RunMigration runs the schema migrations
+func RunMigration() {
 	utils.SetupConfig()
 	db, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {

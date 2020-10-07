@@ -1,1 +1,1 @@
-web: bin/migrations && bin/agora_backend
+web: bin/agora_backend

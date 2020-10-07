@@ -47,3 +47,12 @@ func GetMigrationSource() string {
 
 	return "file://db/migrations"
 }
+
+// GetAllowedOrigin returns origin in the environment variable, else allows all origins
+func GetAllowedOrigin() string {
+	if origin := viper.GetString("ALLOWED_ORIGIN"); origin != "" {
+		return origin
+	}
+
+	return "*"
+}
