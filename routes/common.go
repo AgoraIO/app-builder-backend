@@ -38,6 +38,27 @@ type TokenTemplate struct {
 	Scheme string
 }
 
+
+
+func TokenGenerator(db *models.Database, user GoogleOAuthUser, bearerToken string ){
+	var userData models.User
+	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
+		db.Create(&models.User{
+			Name:  user.GivenName,
+			Email: user.Email,
+			Tokens: []models.Token{{
+				TokenID:    bearerToken,
+				Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
+			}},
+		})
+	} else {
+		db.Model(&userData).Association("Tokens").Append(models.Token{
+			TokenID:    bearerToken,
+			Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
+		})
+	}
+}
+
 // Handler is the handler that will do most of the heavy lifting for OAuth
 func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platform string) (*string, *string, error) {
 	err := r.ParseForm()
@@ -133,23 +154,6 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		log.Error().Err(err).Msg("Could not generate bearer token")
 		return nil, nil, err
 	}
-
-	var userData models.User
-	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
-		db.Create(&models.User{
-			Name:  user.GivenName,
-			Email: user.Email,
-			Tokens: []models.Token{{
-				TokenID:    bearerToken,
-				Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
-			}},
-		})
-	} else {
-		db.Model(&userData).Association("Tokens").Append(models.Token{
-			TokenID:    bearerToken,
-			Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
-		})
-	}
-
+	TokenGenerator(db, user, bearerToken)
 	return &redirect, &bearerToken, nil
 }
