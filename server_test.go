@@ -127,7 +127,7 @@ func RoomCreationHandler(method string, url string,t *testing.T, status int, bea
 }
 
 func TestRoomCreation(t *testing.T) {
-	url := "http://localhost:8050/query"
+	url := "http://localhost:8080/query"
 	method := "POST"
 	createChannelDecoded = RoomCreationHandler(method,url,t, 401, bearerTokenGlobal+"wef")
 	createChannelDecoded = RoomCreationHandler(method,url,t, 200, bearerTokenGlobal)
@@ -179,7 +179,7 @@ func JoinRoomHandler(url string, method string, Passphrase string, t *testing.T,
 }
 
 func TestJoinRoom(t *testing.T) {
-	url := "http://localhost:8050/query"
+	url := "http://localhost:8080/query"
 	method := "POST"
 
 	testingList := []struct{
