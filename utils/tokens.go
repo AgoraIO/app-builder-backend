@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/samyak-jain/agora_backend/graph/model"
@@ -38,10 +39,17 @@ func GenerateUserCredentials(channel string, rtm bool) (*model.UserCredentials, 
 		return nil, err
 	}
 
+	secretGen, err := GenerateUUID()
+	if err != nil {
+		return nil, err
+	}
+	secret := strings.ReplaceAll(secretGen, "-", "")
+
 	if !rtm {
 		return &model.UserCredentials{
-			Rtc: rtcToken,
-			UID: uid,
+			Rtc:    rtcToken,
+			UID:    uid,
+			Secret: secret,
 		}, nil
 	}
 
@@ -51,8 +59,9 @@ func GenerateUserCredentials(channel string, rtm bool) (*model.UserCredentials, 
 	}
 
 	return &model.UserCredentials{
-		Rtc: rtcToken,
-		Rtm: &rtmToken,
-		UID: uid,
+		Rtc:    rtcToken,
+		Rtm:    &rtmToken,
+		UID:    uid,
+		Secret: secret,
 	}, nil
 }

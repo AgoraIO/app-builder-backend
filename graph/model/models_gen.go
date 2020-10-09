@@ -33,7 +33,8 @@ type User struct {
 }
 
 type UserCredentials struct {
-	Rtc string  `json:"rtc"`
-	Rtm *string `json:"rtm"`
-	UID int     `json:"uid"`
+	Rtc    string  `json:"rtc"`
+	Rtm    *string `json:"rtm"`
+	UID    int     `json:"uid"`
+	Secret string  `json:"secret"`
 }

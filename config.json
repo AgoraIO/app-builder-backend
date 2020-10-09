@@ -10,9 +10,9 @@
     "CLIENT_SECRET": "",
     "PSTN_USERNAME": "",
     "PSTN_PASSWORD": "",
+    "PSTN_NUMBER": "",
     "SCHEME": "",
     "ALLOWED_ORIGIN": "",
     "ENABLE_NEWRELIC_MONITORING": false,
-    "DISABLE_AUTH": false,
     "RUN_MIGRATION": true
 }

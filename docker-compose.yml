@@ -20,7 +20,6 @@ services:
             - SCHEME: $SCHEME
             - ALLOWED_ORIGIN: ""
             - ENABLE_NEWRELIC_MONITORING: false
-            - DISABLE_AUTH: false
             - RUN_MIGRATION: true
             - DATABASE_URL: postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@database:5432/$POSTGRES_DB?sslmode=disable
 

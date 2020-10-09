@@ -47,7 +47,7 @@ type ComplexityRoot struct {
 		CreateChannel         func(childComplexity int, title string, enablePstn *bool) int
 		LogoutAllSessions     func(childComplexity int) int
 		LogoutSession         func(childComplexity int, token string) int
-		StartRecordingSession func(childComplexity int, passphrase string) int
+		StartRecordingSession func(childComplexity int, passphrase string, secret *string) int
 		StopRecordingSession  func(childComplexity int, passphrase string) int
 		UpdateUserName        func(childComplexity int, name string) int
 	}
@@ -90,16 +90,17 @@ type ComplexityRoot struct {
 	}
 
 	UserCredentials struct {
-		Rtc func(childComplexity int) int
-		Rtm func(childComplexity int) int
-		UID func(childComplexity int) int
+		Rtc    func(childComplexity int) int
+		Rtm    func(childComplexity int) int
+		Secret func(childComplexity int) int
+		UID    func(childComplexity int) int
 	}
 }
 
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error)
 	UpdateUserName(ctx context.Context, name string) (*model.User, error)
-	StartRecordingSession(ctx context.Context, passphrase string) (string, error)
+	StartRecordingSession(ctx context.Context, passphrase string, secret *string) (string, error)
 	StopRecordingSession(ctx context.Context, passphrase string) (string, error)
 	LogoutSession(ctx context.Context, token string) ([]string, error)
 	LogoutAllSessions(ctx context.Context) (*string, error)
@@ -167,7 +168,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.StartRecordingSession(childComplexity, args["passphrase"].(string)), true
+		return e.complexity.Mutation.StartRecordingSession(childComplexity, args["passphrase"].(string), args["secret"].(*string)), true
 
 	case "Mutation.stopRecordingSession":
 		if e.complexity.Mutation.StopRecordingSession == nil {
@@ -350,6 +351,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UserCredentials.Rtm(childComplexity), true
 
+	case "UserCredentials.secret":
+		if e.complexity.UserCredentials.Secret == nil {
+			break
+		}
+
+		return e.complexity.UserCredentials.Secret(childComplexity), true
+
 	case "UserCredentials.uid":
 		if e.complexity.UserCredentials.UID == nil {
 			break
@@ -442,6 +450,7 @@ type UserCredentials {
   rtc: String!
   rtm: String
   uid: Int!
+  secret: String!
 }
 
 type Session { 
@@ -467,7 +476,7 @@ type Query {
 type Mutation {
   createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
   updateUserName(name: String!): User!
-  startRecordingSession(passphrase: String!): String!
+  startRecordingSession(passphrase: String!, secret: String): String!
   stopRecordingSession(passphrase: String!): String!
   logoutSession(token: String!): [String!]
   logoutAllSessions: String
@@ -526,6 +535,14 @@ func (ec *executionContext) field_Mutation_startRecordingSession_args(ctx contex
 		}
 	}
 	args["passphrase"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["secret"]; ok {
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["secret"] = arg1
 	return args, nil
 }
 
@@ -741,7 +758,7 @@ func (ec *executionContext) _Mutation_startRecordingSession(ctx context.Context,
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().StartRecordingSession(rctx, args["passphrase"].(string))
+		return ec.resolvers.Mutation().StartRecordingSession(rctx, args["passphrase"].(string), args["secret"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1685,6 +1702,40 @@ func (ec *executionContext) _UserCredentials_uid(ctx context.Context, field grap
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UserCredentials_secret(ctx context.Context, field graphql.CollectedField, obj *model.UserCredentials) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UserCredentials",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Secret, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -3082,6 +3133,11 @@ func (ec *executionContext) _UserCredentials(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._UserCredentials_rtm(ctx, field, obj)
 		case "uid":
 			out.Values[i] = ec._UserCredentials_uid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "secret":
+			out.Values[i] = ec._UserCredentials_secret(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

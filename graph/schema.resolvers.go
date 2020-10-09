@@ -8,6 +8,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/spf13/viper"
+
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/graph/model"
@@ -15,9 +17,6 @@ import (
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/utils"
 )
-
-var errInternalServer error = errors.New("Internal Server Error")
-var errBadRequest error = errors.New("Bad Request")
 
 func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error) {
 	authUser := middleware.GetUserFromContext(ctx)
@@ -57,7 +56,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		}
 
 		pstnResponse = &model.Pstn{
-			Number: "+17018052515",
+			Number: viper.GetString("PSTN_NUMBER"),
 			Dtmf:   *dtmfResult,
 		}
 
@@ -116,7 +115,7 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 	}, nil
 }
 
-func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase string) (string, error) {
+func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase string, secret *string) (string, error) {
 	var channelData models.Channel
 	var host bool
 
@@ -149,7 +148,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		return "", errInternalServer
 	}
 
-	err = recorder.Start()
+	err = recorder.Start(secret)
 	if err != nil {
 		log.Error().Err(err).Msg("Start Failed")
 		return "", errInternalServer
@@ -322,7 +321,7 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 	var pstnResult *model.Pstn
 	if channelData.DTMF != "" {
 		pstnResult = &model.Pstn{
-			Number: "+17018052515",
+			Number: viper.GetString("PSTN_NUMBER"),
 			Dtmf:   channelData.DTMF,
 		}
 	} else {
@@ -376,3 +375,12 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+var errInternalServer error = errors.New("Internal Server Error")
+var errBadRequest error = errors.New("Bad Request")
