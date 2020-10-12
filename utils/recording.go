@@ -70,7 +70,7 @@ func (rec *Recorder) Start(secret *string) error {
 	currentTime := strconv.FormatInt(time.Now().Unix(), 10)
 
 	var requestBody string
-	if secret != nil {
+	if secret != nil && *secret != "" {
 		requestBody = fmt.Sprintf(`
 		{
 			"cname": "%s",
