@@ -12,15 +12,6 @@ type AgoraConfig struct {
 	AppCertificate string
 }
 
-// SetDefaults sets the default for configuration
-func SetDefaults() {
-	viper.SetDefault("LOG_DIR", "./logs")
-	viper.SetDefault("PORT", "8080")
-	viper.SetDefault("MIGRATION_SOURCE", "file://db/migrations") // Will be used later
-	viper.SetDefault("ALLOWED_ORIGIN", "*")
-	viper.SetDefault("ENABLE_OAUTH", true)
-}
-
 // SetupConfig configures the boilerplate for viper
 func SetupConfig() {
 	viper.SetConfigName("config.json")
@@ -31,6 +22,37 @@ func SetupConfig() {
 		panic(fmt.Errorf("Fatal error config file: %s", err))
 	}
 
-	SetDefaults()
 	viper.AutomaticEnv()
+}
+
+// GetPORT fetches the PORT
+func GetPORT(defaultPort string) string {
+	if port := viper.GetString("PORT"); port != "" {
+		return port
+	}
+
+	return defaultPort
+}
+
+// GetDBURL fetches the database string
+func GetDBURL() string {
+	return viper.GetString("DATABASE_URL")
+}
+
+// GetMigrationSource gets the url from which the database migrations are fetched from
+func GetMigrationSource() string {
+	if source := viper.GetString("MIGRATION_SOURCE"); source != "" {
+		return source
+	}
+
+	return "file://db/migrations"
+}
+
+// GetAllowedOrigin returns origin in the environment variable, else allows all origins
+func GetAllowedOrigin() string {
+	if origin := viper.GetString("ALLOWED_ORIGIN"); origin != "" {
+		return origin
+	}
+
+	return "*"
 }

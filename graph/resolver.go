@@ -1,9 +1,6 @@
 package graph
 
-import (
-	"github.com/samyak-jain/agora_backend/models"
-	"github.com/samyak-jain/agora_backend/utils"
-)
+import "github.com/samyak-jain/agora_backend/models"
 
 // This file will not be regenerated automatically.
 //
@@ -11,6 +8,5 @@ import (
 
 // Resolver is used for state management
 type Resolver struct {
-	DB     *models.Database
-	Logger *utils.Logger
+	DB *models.Database
 }
