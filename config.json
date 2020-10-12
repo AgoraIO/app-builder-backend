@@ -14,5 +14,6 @@
     "SCHEME": "",
     "ALLOWED_ORIGIN": "",
     "ENABLE_NEWRELIC_MONITORING": false,
-    "RUN_MIGRATION": true
+    "RUN_MIGRATION": true,
+    "ENABLE_OAUTH": true
 }

@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/utils"
@@ -34,7 +33,7 @@ type Router struct {
 
 // TokenTemplate is a struct that will be used to template the token into the html that will be served for Desktop and Mobile
 type TokenTemplate struct {
-	Token string
+	Token  string
 	Scheme string
 }
 
@@ -140,14 +139,12 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 			Name:  user.GivenName,
 			Email: user.Email,
 			Tokens: []models.Token{{
-				TokenID:    bearerToken,
-				Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
+				TokenID: bearerToken,
 			}},
 		})
 	} else {
 		db.Model(&userData).Association("Tokens").Append(models.Token{
-			TokenID:    bearerToken,
-			Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
+			TokenID: bearerToken,
 		})
 	}
 

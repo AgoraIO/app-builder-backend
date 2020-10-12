@@ -18,11 +18,16 @@ import (
 	"github.com/samyak-jain/agora_backend/utils"
 )
 
+var errInternalServer error = errors.New("Internal Server Error")
+var errBadRequest error = errors.New("Bad Request")
+
 func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error) {
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
-		return nil, errors.New("Invalid Token")
+	if viper.GetBool("ENABLE_OAUTH") {
+		authUser := middleware.GetUserFromContext(ctx)
+		if authUser == nil {
+			log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+			return nil, errors.New("Invalid Token")
+		}
 	}
 
 	var pstnResponse *model.Pstn
@@ -66,7 +71,6 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 			DTMF:             *dtmfResult,
-			Hosts:            *authUser,
 		}
 
 	} else {
@@ -76,7 +80,6 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 			Name:             channel,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
-			Hosts:            *authUser,
 		}
 	}
 
@@ -97,6 +100,10 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 }
 
 func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*model.User, error) {
+	if !viper.GetBool("ENABLE_OAUTH") {
+		return nil, nil
+	}
+
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
 		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
@@ -227,10 +234,8 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 		return nil, errBadRequest
 	}
 
-	if err := r.DB.Delete(&models.Token{
-		TokenID: token,
-	}).Error; err != nil {
-		log.Error().Err(err).Msg("Coudl not delete token from database")
+	if err := r.DB.Where("token_id = ?", token).Delete(models.Token{}).Error; err != nil {
+		log.Error().Err(err).Msg("Could not delete token from database")
 		return nil, errInternalServer
 	}
 
@@ -340,6 +345,10 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 }
 
 func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
+	if !viper.GetBool("ENABLE_OAUTH") {
+		return nil, nil
+	}
+
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
 		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
@@ -375,12 +384,3 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-var errInternalServer error = errors.New("Internal Server Error")
-var errBadRequest error = errors.New("Bad Request")
