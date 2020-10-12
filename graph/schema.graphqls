@@ -19,13 +19,13 @@ type UserCredentials {
   rtc: String!
   rtm: String
   uid: Int!
-  secret: String!
 }
 
 type Session { 
   channel: String!
   title: String!
   isHost: Boolean!
+  secret: String!
   mainUser: UserCredentials!
   screenShare: UserCredentials!
 }

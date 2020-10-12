@@ -8,14 +8,13 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/spf13/viper"
-
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/utils"
+	"github.com/spf13/viper"
 )
 
 var errInternalServer error = errors.New("Internal Server Error")
@@ -53,6 +52,12 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 
 	channel := strings.ReplaceAll(channelName, "-", "")
 
+	secretGen, err := utils.GenerateUUID()
+	if err != nil {
+		return nil, err
+	}
+	secret := strings.ReplaceAll(secretGen, "-", "")
+
 	if *enablePstn {
 		dtmfResult, err := utils.GenerateDTMF()
 		if err != nil {
@@ -68,6 +73,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		newChannel = &models.Channel{
 			Title:            title,
 			Name:             channel,
+			Secret:           secret,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 			DTMF:             *dtmfResult,
@@ -78,6 +84,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		newChannel = &models.Channel{
 			Title:            title,
 			Name:             channel,
+			Secret:           secret,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 		}
@@ -294,6 +301,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		IsHost:      host,
 		MainUser:    mainUser,
 		ScreenShare: screenShare,
+		Secret:      channelData.Secret,
 	}, nil
 }
 

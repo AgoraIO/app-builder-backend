@@ -16,6 +16,7 @@ type Session struct {
 	Channel     string           `json:"channel"`
 	Title       string           `json:"title"`
 	IsHost      bool             `json:"isHost"`
+	Secret      string           `json:"secret"`
 	MainUser    *UserCredentials `json:"mainUser"`
 	ScreenShare *UserCredentials `json:"screenShare"`
 }
@@ -33,8 +34,7 @@ type User struct {
 }
 
 type UserCredentials struct {
-	Rtc    string  `json:"rtc"`
-	Rtm    *string `json:"rtm"`
-	UID    int     `json:"uid"`
-	Secret string  `json:"secret"`
+	Rtc string  `json:"rtc"`
+	Rtm *string `json:"rtm"`
+	UID int     `json:"uid"`
 }

@@ -74,6 +74,7 @@ type ComplexityRoot struct {
 		IsHost      func(childComplexity int) int
 		MainUser    func(childComplexity int) int
 		ScreenShare func(childComplexity int) int
+		Secret      func(childComplexity int) int
 		Title       func(childComplexity int) int
 	}
 
@@ -90,10 +91,9 @@ type ComplexityRoot struct {
 	}
 
 	UserCredentials struct {
-		Rtc    func(childComplexity int) int
-		Rtm    func(childComplexity int) int
-		Secret func(childComplexity int) int
-		UID    func(childComplexity int) int
+		Rtc func(childComplexity int) int
+		Rtm func(childComplexity int) int
+		UID func(childComplexity int) int
 	}
 }
 
@@ -288,6 +288,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Session.ScreenShare(childComplexity), true
 
+	case "Session.secret":
+		if e.complexity.Session.Secret == nil {
+			break
+		}
+
+		return e.complexity.Session.Secret(childComplexity), true
+
 	case "Session.title":
 		if e.complexity.Session.Title == nil {
 			break
@@ -350,13 +357,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.UserCredentials.Rtm(childComplexity), true
-
-	case "UserCredentials.secret":
-		if e.complexity.UserCredentials.Secret == nil {
-			break
-		}
-
-		return e.complexity.UserCredentials.Secret(childComplexity), true
 
 	case "UserCredentials.uid":
 		if e.complexity.UserCredentials.UID == nil {
@@ -450,13 +450,13 @@ type UserCredentials {
   rtc: String!
   rtm: String
   uid: Int!
-  secret: String!
 }
 
 type Session { 
   channel: String!
   title: String!
   isHost: Boolean!
+  secret: String!
   mainUser: UserCredentials!
   screenShare: UserCredentials!
 }
@@ -1336,6 +1336,40 @@ func (ec *executionContext) _Session_isHost(ctx context.Context, field graphql.C
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Session_secret(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Session",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Secret, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Session_mainUser(ctx context.Context, field graphql.CollectedField, obj *model.Session) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1702,40 +1736,6 @@ func (ec *executionContext) _UserCredentials_uid(ctx context.Context, field grap
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _UserCredentials_secret(ctx context.Context, field graphql.CollectedField, obj *model.UserCredentials) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "UserCredentials",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Secret, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -3021,6 +3021,11 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "secret":
+			out.Values[i] = ec._Session_secret(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "mainUser":
 			out.Values[i] = ec._Session_mainUser(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -3133,11 +3138,6 @@ func (ec *executionContext) _UserCredentials(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._UserCredentials_rtm(ctx, field, obj)
 		case "uid":
 			out.Values[i] = ec._UserCredentials_uid(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "secret":
-			out.Values[i] = ec._UserCredentials_secret(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
