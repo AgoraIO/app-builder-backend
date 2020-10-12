@@ -2,19 +2,19 @@ package main
 
 import (
 	"net/http"
-	"net/http/httputil"
 	"os"
+	"time"
+
+	"github.com/gorilla/handlers"
 
 	"github.com/samyak-jain/agora_backend/migrations"
 
 	"github.com/spf13/viper"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/gorilla/mux"
-	"github.com/urfave/negroni"
 
 	"github.com/rs/cors"
+	"github.com/rs/zerolog/hlog"
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/routes"
 
@@ -35,12 +35,18 @@ const defaultPort = "8080"
 
 func main() {
 	utils.SetupConfig()
+	logger := utils.Configure(utils.Config{
+		ConsoleLoggingEnabled: true,
+		FileLoggingEnabled:    true,
+		Directory:             viper.GetString("LOG_DIR"),
+		Filename:              "app-builder-logs",
+	})
 
-	port := utils.GetPORT(defaultPort)
+	port := viper.GetString("PORT")
 
-	database, err := models.CreateDB(utils.GetDBURL())
+	database, err := models.CreateDB(viper.GetString("DATABASE_URL"))
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error initializing database")
+		logger.Fatal().Err(err).Msg("Error initializing database")
 		return
 	}
 
@@ -51,22 +57,20 @@ func main() {
 	router := mux.NewRouter()
 
 	config := generated.Config{
-		Resolvers: &graph.Resolver{DB: database},
+		Resolvers: &graph.Resolver{
+			DB:     database,
+			Logger: logger,
+		},
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
-	requestHandler := routes.Router{DB: database}
+	requestHandler := routes.Router{
+		DB:     database,
+		Logger: logger,
+	}
 
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	router.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
-	router.HandleFunc("/test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestDump, err := httputil.DumpRequest(r, true)
-		if err != nil {
-			log.Error().Err(err).Msg("Error reading request")
-			return
-		}
-		log.Info().Interface("request", string(requestDump)).Msg("Request Details")
-	}))
 	router.Handle("/query", srv)
 	router.HandleFunc("/oauth/web", http.HandlerFunc(requestHandler.WebOAuthHandler))
 	router.HandleFunc("/oauth/desktop", http.HandlerFunc(requestHandler.DesktopOAuthHandler))
@@ -74,15 +78,24 @@ func main() {
 	router.HandleFunc("/pstnConfig", http.HandlerFunc(requestHandler.PSTNConfig))
 	router.HandleFunc("/pstnHandle", http.HandlerFunc(requestHandler.DTMFHandler))
 
-	middlewareHandler := negroni.Classic()
-	middlewareHandler.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{utils.GetAllowedOrigin()},
+	router.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		logger.Info().
+			Str("method", r.Method).
+			Stringer("url", r.URL).
+			Int("status", status).
+			Int("size", size).
+			Dur("duration", duration).
+			Msg("")
+	}))
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{viper.GetString("ALLOWED_ORIGIN")},
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"authorization", "content-type"},
 		Debug:            false,
-	}))
-	middlewareHandler.Use(middleware.AuthHandler(database))
-	// middlewareHandler.Use(hlog.AccessHandler())
+	}).Handler)
+	router.Use(handlers.RecoveryHandler())
+
+	router.Use(middleware.AuthHandler(database, logger))
 
 	if viper.GetBool("ENABLE_NEWRELIC_MONITORING") {
 		nrAgent, err := newrelic.NewApplication(
@@ -92,15 +105,13 @@ func main() {
 		)
 
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error initializing New Relic Agent")
+			logger.Fatal().Err(err).Msg("Error initializing New Relic Agent")
 			return
 		}
 
 		router.Use(nrgorilla.Middleware(nrAgent))
 	}
 
-	middlewareHandler.UseHandler(router)
-
-	log.Debug().Str("PORT", port)
-	log.Fatal().Err(http.ListenAndServe(":"+port, middlewareHandler))
+	logger.Debug().Str("PORT", port)
+	logger.Fatal().Err(http.ListenAndServe(":"+port, router))
 }
