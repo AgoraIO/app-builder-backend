@@ -5,8 +5,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/spf13/viper"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -38,29 +36,6 @@ type Logger struct {
 	*zerolog.Logger
 }
 
-// SetLogLevel sets the level of the global logger
-func SetLogLevel() {
-	level := viper.GetString("LOG_LEVEL")
-	var zerologLevel zerolog.Level
-	if level == "PANIC" {
-		zerologLevel = zerolog.PanicLevel
-	} else if level == "FATAL" {
-		zerologLevel = zerolog.FatalLevel
-	} else if level == "ERROR" {
-		zerologLevel = zerolog.ErrorLevel
-	} else if level == "WARN" {
-		zerologLevel = zerolog.WarnLevel
-	} else if level == "INFO" {
-		zerologLevel = zerolog.InfoLevel
-	} else if level == "DEBUG" {
-		zerologLevel = zerolog.DebugLevel
-	} else {
-		panic("Invalid Log Level")
-	}
-
-	zerolog.SetGlobalLevel(zerologLevel)
-}
-
 // Configure sets up the logging framework
 //
 // In production, the container logs will be collected and file logging should be disabled. However,
@@ -70,8 +45,6 @@ func SetLogLevel() {
 // The output log file will be located at /var/log/service-xyz/service-xyz.log and
 // will be rolled according to configuration set.
 func Configure(config Config) *Logger {
-	SetLogLevel()
-
 	var writers []io.Writer
 
 	if config.ConsoleLoggingEnabled {

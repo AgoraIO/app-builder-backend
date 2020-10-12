@@ -36,8 +36,8 @@ const defaultPort = "8080"
 func main() {
 	utils.SetupConfig()
 	logger := utils.Configure(utils.Config{
-		ConsoleLoggingEnabled: viper.GetBool("ENABLE_CONSOLE_LOGGING"),
-		FileLoggingEnabled:    viper.GetBool("ENABLE_FILE_LOGGING"),
+		ConsoleLoggingEnabled: true,
+		FileLoggingEnabled:    true,
 		Directory:             viper.GetString("LOG_DIR"),
 		Filename:              "app-builder-logs",
 	})
