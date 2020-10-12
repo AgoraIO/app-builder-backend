@@ -16,9 +16,12 @@ type AgoraConfig struct {
 func SetDefaults() {
 	viper.SetDefault("LOG_DIR", "./logs")
 	viper.SetDefault("PORT", "8080")
-	viper.SetDefault("MIGRATION_SOURCE", "file://db/migrations") // Will be used later
+	viper.SetDefault("MIGRATION_SOURCE", "file://db/migrations") // Will be used in the future
 	viper.SetDefault("ALLOWED_ORIGIN", "*")
 	viper.SetDefault("ENABLE_OAUTH", true)
+	viper.SetDefault("ENABLE_CONSOLE_LOGGINIG", true)
+	viper.SetDefault("ENABLE_FILE_LOGGING", true)
+	viper.SetDefault("LOG_LEVEL", "DEBUG")
 }
 
 // SetupConfig configures the boilerplate for viper
