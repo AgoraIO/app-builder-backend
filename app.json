@@ -53,6 +53,10 @@
         "SCHEME": {
             "description": "Contains project name. Used for deep links",
             "required": true
+        },
+        "ENABLE_OAUTH": {
+            "description": "Boolean. If OAuth needs to be enabled",
+            "required": true
         }
     }
 }
