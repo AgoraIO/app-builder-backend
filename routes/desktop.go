@@ -8,7 +8,7 @@ import (
 
 // DesktopOAuthHandler is a REST route that is called when the oauth provider redirects to here and provides the code
 func (o *Router) DesktopOAuthHandler(w http.ResponseWriter, r *http.Request) {
-	_, token, err := Handler(w, r, o.DB, "desktop")
+	_, token, err := Handler(w, r, o.DB, o.Logger, "desktop")
 	if err != nil {
 		fmt.Fprint(w, "Internal Server Error")
 		return
