@@ -14,16 +14,19 @@ import (
 	"github.com/samyak-jain/agora_backend/middleware"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/utils"
+	"github.com/spf13/viper"
 )
 
 var errInternalServer error = errors.New("Internal Server Error")
 var errBadRequest error = errors.New("Bad Request")
 
 func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error) {
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
-		return nil, errors.New("Invalid Token")
+	if viper.GetBool("ENABLE_OAUTH") {
+		authUser := middleware.GetUserFromContext(ctx)
+		if authUser == nil {
+			log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+			return nil, errors.New("Invalid Token")
+		}
 	}
 
 	var pstnResponse *model.Pstn
@@ -49,6 +52,12 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 
 	channel := strings.ReplaceAll(channelName, "-", "")
 
+	secretGen, err := utils.GenerateUUID()
+	if err != nil {
+		return nil, err
+	}
+	secret := strings.ReplaceAll(secretGen, "-", "")
+
 	if *enablePstn {
 		dtmfResult, err := utils.GenerateDTMF()
 		if err != nil {
@@ -57,17 +66,17 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		}
 
 		pstnResponse = &model.Pstn{
-			Number: "+17018052515",
+			Number: viper.GetString("PSTN_NUMBER"),
 			Dtmf:   *dtmfResult,
 		}
 
 		newChannel = &models.Channel{
 			Title:            title,
 			Name:             channel,
+			Secret:           secret,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 			DTMF:             *dtmfResult,
-			Hosts:            *authUser,
 		}
 
 	} else {
@@ -75,9 +84,9 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		newChannel = &models.Channel{
 			Title:            title,
 			Name:             channel,
+			Secret:           secret,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
-			Hosts:            *authUser,
 		}
 	}
 
@@ -98,6 +107,10 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 }
 
 func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*model.User, error) {
+	if !viper.GetBool("ENABLE_OAUTH") {
+		return nil, nil
+	}
+
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
 		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
@@ -116,7 +129,7 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 	}, nil
 }
 
-func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase string) (string, error) {
+func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase string, secret *string) (string, error) {
 	var channelData models.Channel
 	var host bool
 
@@ -149,7 +162,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		return "", errInternalServer
 	}
 
-	err = recorder.Start()
+	err = recorder.Start(secret)
 	if err != nil {
 		log.Error().Err(err).Msg("Start Failed")
 		return "", errInternalServer
@@ -228,10 +241,8 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 		return nil, errBadRequest
 	}
 
-	if err := r.DB.Delete(&models.Token{
-		TokenID: token,
-	}).Error; err != nil {
-		log.Error().Err(err).Msg("Coudl not delete token from database")
+	if err := r.DB.Where("token_id = ?", token).Delete(models.Token{}).Error; err != nil {
+		log.Error().Err(err).Msg("Could not delete token from database")
 		return nil, errInternalServer
 	}
 
@@ -290,6 +301,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		IsHost:      host,
 		MainUser:    mainUser,
 		ScreenShare: screenShare,
+		Secret:      channelData.Secret,
 	}, nil
 }
 
@@ -322,7 +334,7 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 	var pstnResult *model.Pstn
 	if channelData.DTMF != "" {
 		pstnResult = &model.Pstn{
-			Number: "+17018052515",
+			Number: viper.GetString("PSTN_NUMBER"),
 			Dtmf:   channelData.DTMF,
 		}
 	} else {
@@ -341,6 +353,10 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 }
 
 func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
+	if !viper.GetBool("ENABLE_OAUTH") {
+		return nil, nil
+	}
+
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
 		log.Debug().Str("Email", authUser.Email).Msg("Invalid Token")

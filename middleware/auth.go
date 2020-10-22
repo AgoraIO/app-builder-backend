@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/spf13/viper"
+
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/urfave/negroni"
@@ -20,6 +22,11 @@ var userContextKey = &contextKey{"user"}
 func AuthHandler(db *models.Database) negroni.HandlerFunc {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		if r.Method == "OPTIONS" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if !viper.GetBool("ENABLE_OAUTH") {
 			next.ServeHTTP(w, r)
 			return
 		}

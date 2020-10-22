@@ -16,6 +16,7 @@ type Session struct {
 	Channel     string           `json:"channel"`
 	Title       string           `json:"title"`
 	IsHost      bool             `json:"isHost"`
+	Secret      string           `json:"secret"`
 	MainUser    *UserCredentials `json:"mainUser"`
 	ScreenShare *UserCredentials `json:"screenShare"`
 }

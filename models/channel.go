@@ -9,6 +9,7 @@ type Channel struct {
 	gorm.Model
 	Title            string
 	Name             string
+	Secret           string
 	HostPassphrase   string
 	ViewerPassphrase string
 	DTMF             string

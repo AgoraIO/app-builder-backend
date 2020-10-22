@@ -66,10 +66,47 @@ func (rec *Recorder) Acquire() error {
 }
 
 // Start starts the recording
-func (rec *Recorder) Start() error {
+func (rec *Recorder) Start(secret *string) error {
 	currentTime := strconv.FormatInt(time.Now().Unix(), 10)
 
-	requestBody := fmt.Sprintf(`
+	var requestBody string
+	if secret != nil && *secret != "" {
+		requestBody = fmt.Sprintf(`
+		{
+			"cname": "%s",
+			"uid": "%d",
+			"clientRequest": {
+				"token": "%s",
+				"recordingConfig": {
+					"maxIdleTime": 30,
+					"streamTypes": 2,
+					"channelType": 1,
+					"decryptionMode": 1,
+					"secret": "%s",
+					"transcodingConfig": {
+						"height": 720, 
+						"width": 1280,
+						"bitrate": 2260, 
+						"fps": 15, 
+						"mixedVideoLayout": 1,
+						"backgroundColor": "#000000"
+					}
+				},
+				"storageConfig": {
+					"vendor": 1, 
+					"region": 0,
+					"bucket": "%s",
+					"accessKey": "%s",
+					"secretKey": "%s",
+					"fileNamePrefix": ["%s", "%s"]
+				}
+			}
+		}
+	`, rec.Channel, rec.UID, rec.Token, *secret, viper.GetString("BUCKET_NAME"),
+			viper.GetString("BUCKET_ACCESS_KEY"), viper.GetString("BUCKET_ACCESS_SECRET"),
+			rec.Channel, currentTime)
+	} else {
+		requestBody = fmt.Sprintf(`
 		{
 			"cname": "%s",
 			"uid": "%d",
@@ -99,8 +136,9 @@ func (rec *Recorder) Start() error {
 			}
 		}
 	`, rec.Channel, rec.UID, rec.Token, viper.GetString("BUCKET_NAME"),
-		viper.GetString("BUCKET_ACCESS_KEY"), viper.GetString("BUCKET_ACCESS_SECRET"),
-		rec.Channel, currentTime)
+			viper.GetString("BUCKET_ACCESS_KEY"), viper.GetString("BUCKET_ACCESS_SECRET"),
+			rec.Channel, currentTime)
+	}
 
 	req, err := http.NewRequest("POST", "https://api.agora.io/v1/apps/"+viper.GetString("APP_ID")+"/cloud_recording/resourceid/"+rec.RID+"/mode/mix/start",
 		bytes.NewBuffer([]byte(requestBody)))

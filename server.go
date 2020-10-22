@@ -5,6 +5,8 @@ import (
 	"net/http/httputil"
 	"os"
 
+	"github.com/samyak-jain/agora_backend/migrations"
+
 	"github.com/spf13/viper"
 
 	"github.com/rs/zerolog/log"
@@ -44,6 +46,10 @@ func main() {
 		return
 	}
 
+	if viper.GetBool("RUN_MIGRATION") {
+		migrations.RunMigration()
+	}
+
 	router := mux.NewRouter()
 
 	config := generated.Config{
@@ -72,11 +78,10 @@ func main() {
 
 	middlewareHandler := negroni.Classic()
 	middlewareHandler.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   []string{utils.GetAllowedOrigin()},
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"authorization", "content-type"},
-		// Enable Debugging for testing, consider disabling in production
-		Debug: viper.GetBool("DEBUG"),
+		Debug:            false,
 	}))
 	middlewareHandler.Use(middleware.AuthHandler(database))
 	// middlewareHandler.Use(hlog.AccessHandler())
