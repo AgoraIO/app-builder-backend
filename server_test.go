@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	_ "github.com/coreos/etcd/client"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/routes"
 	"github.com/samyak-jain/agora_backend/utils"
@@ -63,6 +64,23 @@ type JoinChannelFailed struct {
 	Data interface{} `json:"data"`
 }
 
+
+type Variables struct {
+	passphrase string
+}
+
+type JoinRoomCreate struct {
+	operationName string
+	variables Variables
+	query string
+}
+
+type CreateRoom struct {
+	operationName string
+	query string
+}
+
+
 var bearerTokenGlobal string
 var createChannelDecoded CreateChannel
 
@@ -90,18 +108,41 @@ func TestWebOAuthHandler(t *testing.T) {
 	}
 	var user routes.GoogleOAuthUser
 	for _,tc := range testingList {
+		tc:=tc
 		user.GivenName = tc.GivenName
 		user.Email = tc.email
 		routes.TokenGenerator(database,user,tc.bearerToken)
+
 	}
 }
 
-
+//CHANGE HERE
 func RoomCreationHandler(method string, url string,t *testing.T, status int, bearerToken string) CreateChannel {
-	payload := strings.NewReader("{\n    \"operationName\": \"CreateChannel\",\n    \"variables\": {\n        \"title\": \"Test\",\n        \"enablePSTN\": false\n    },\n    \"query\": \"mutation CreateChannel($title: String!, $enablePSTN: Boolean) {\\n  createChannel(title: $title, enablePSTN: $enablePSTN) {\\n    passphrase {\\n      host\\n      view\\n      __typename\\n    }\\n    channel\\n    title\\n    pstn {\\n      number\\n      dtmf\\n      __typename\\n    }\\n    __typename\\n  }\\n}\\n\"\n}")
+	query := `mutation CreateChannel($title: String!, $enablePSTN: Boolean) {
+				createChannel(title: $title, enablePSTN: $enablePSTN) {
+					passphrase {
+						host
+						view
+						__typename
+					}
+					channel
+					title
+					pstn {
+						number
+						dtmf
+						__typename
+					}
+					__typename
+					}
+				}
+			}`
+
+	payload := CreateRoom{"JoinChannel",query}
+	marshaledJson, _ := json.Marshal(payload)
+	jsonPayload := strings.NewReader(string(marshaledJson))
 	client := &http.Client {
 	}
-	req, err := http.NewRequest(method, url, payload)
+	req, err := http.NewRequest(method, url, jsonPayload)
 	if err != nil {
 		t.Error(err," : in CreateRoomHandler ")
 	}
@@ -127,7 +168,7 @@ func RoomCreationHandler(method string, url string,t *testing.T, status int, bea
 }
 
 func TestRoomCreation(t *testing.T) {
-	url := "http://localhost:8050/query"
+	url := "http://localhost:8080/query"
 	method := "POST"
 	createChannelDecoded = RoomCreationHandler(method,url,t, 401, bearerTokenGlobal+"wef")
 	createChannelDecoded = RoomCreationHandler(method,url,t, 200, bearerTokenGlobal)
@@ -135,11 +176,40 @@ func TestRoomCreation(t *testing.T) {
 
 
 func JoinRoomHandler(url string, method string, Passphrase string, t *testing.T, resStatus int, bearerToken string, status bool) {
-	finalResult := strings.Replace("{\n    \"operationName\": \"JoinChannel\",\n    \"variables\": {\n        \"passphrase\": \"{{PASSPHRASE}}\"\n    },\n    \"query\": \"query JoinChannel($passphrase: String!) {\\n  joinChannel(passphrase: $passphrase) {\\n    channel\\n    title\\n    isHost\\n    mainUser {\\n      rtc\\n      rtm\\n      uid\\n      __typename\\n    }\\n    screenShare {\\n      rtc\\n      rtm\\n      uid\\n      __typename\\n    }\\n    __typename\\n  }\\n  getUser {\\n    name\\n    email\\n    __typename\\n  }\\n}\\n\"\n}", "{{PASSPHRASE}}", Passphrase, 1)
-	payload := strings.NewReader(finalResult)
+	query := `query JoinChannel($passphrase: String!) {
+					joinChannel(passphrase: $passphrase) {
+						channel
+						title
+						isHost
+						mainUser {
+							rtc	
+							rtm
+							uid
+							__typename
+						}
+						screenShare {
+							rtc
+							rtm
+							uid
+							__typename
+						}
+						__typename
+					}
+					getUser {
+						name
+						email
+						__typename
+					}
+				}`
+	variable := Variables{
+		passphrase: Passphrase,
+	}
+	payload := JoinRoomCreate{"JoinChannel",variable,query}
+	marshaledJson, _ := json.Marshal(payload)
+	jsonPayload := strings.NewReader(string(marshaledJson))
 	client := &http.Client {
 	}
-	req, err := http.NewRequest(method, url, payload)
+	req, err := http.NewRequest(method, url, jsonPayload)
 	if err != nil {
 		t.Error(err," : in JoinRoomHandler ")
 	}
@@ -179,7 +249,7 @@ func JoinRoomHandler(url string, method string, Passphrase string, t *testing.T,
 }
 
 func TestJoinRoom(t *testing.T) {
-	url := "http://localhost:8050/query"
+	url := "http://localhost:8080/query"
 	method := "POST"
 
 	testingList := []struct{
