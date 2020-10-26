@@ -2,8 +2,8 @@
 name: Tracking Issues
 about: Issues to record progress of implementation. Used internally only. For feature
   requests or bug reports, open separate issue
-title: "[TRACKING]"
-labels: ''
+title: ''
+labels: tracking
 assignees: ''
 
 ---
