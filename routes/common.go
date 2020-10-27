@@ -3,12 +3,11 @@ package routes
 import (
 	"encoding/json"
 	"errors"
+	"github.com/rs/zerolog/log"
+	"github.com/samyak-jain/agora_backend/utils"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/rs/zerolog/log"
-	"github.com/samyak-jain/agora_backend/utils"
 
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/spf13/viper"
@@ -37,23 +36,19 @@ type TokenTemplate struct {
 	Scheme string
 }
 
-
-
-func TokenGenerator(db *models.Database, user GoogleOAuthUser, bearerToken string ){
+func TokenGenerator(db *models.Database, user GoogleOAuthUser, bearerToken string) {
 	var userData models.User
 	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
 		db.Create(&models.User{
 			Name:  user.GivenName,
 			Email: user.Email,
 			Tokens: []models.Token{{
-				TokenID:    bearerToken,
-				Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
+				TokenID: bearerToken,
 			}},
 		})
 	} else {
 		db.Model(&userData).Association("Tokens").Append(models.Token{
-			TokenID:    bearerToken,
-			Expiration: time.Now().Add(time.Hour * 240).Format(time.UnixDate),
+			TokenID: bearerToken,
 		})
 	}
 }
