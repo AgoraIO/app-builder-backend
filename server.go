@@ -87,6 +87,8 @@ func main() {
 			Dur("duration", duration).
 			Msg("")
 	}))
+
+	logger.Info().Str("origin", viper.GetString("ALLOWED_ORIGIN")).Msg("")
 	router.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{viper.GetString("ALLOWED_ORIGIN")},
 		AllowCredentials: true,

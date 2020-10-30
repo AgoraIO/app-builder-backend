@@ -19,6 +19,10 @@ func SetDefaults() {
 	viper.SetDefault("MIGRATION_SOURCE", "file://db/migrations") // Will be used later
 	viper.SetDefault("ALLOWED_ORIGIN", "*")
 	viper.SetDefault("ENABLE_OAUTH", true)
+
+	if viper.GetString("ALLOWED_ORIGIN") == "" {
+		viper.Set("ALLOWED_ORIGIN", "*")
+	}
 }
 
 // SetupConfig configures the boilerplate for viper
@@ -31,6 +35,6 @@ func SetupConfig() {
 		panic(fmt.Errorf("Fatal error config file: %s", err))
 	}
 
-	SetDefaults()
 	viper.AutomaticEnv()
+	SetDefaults()
 }
