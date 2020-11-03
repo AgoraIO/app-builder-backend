@@ -1,14 +1,15 @@
 package main
 
 import (
-	"encoding/json"
-	_ "github.com/coreos/etcd/client"
+	"fmt"
+	"github.com/99designs/gqlgen/client"
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/samyak-jain/agora_backend/graph"
+	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/routes"
 	"github.com/samyak-jain/agora_backend/utils"
-	"io/ioutil"
-	"net/http"
-	"strings"
+
 	"testing"
 )
 
@@ -130,33 +131,19 @@ func RoomCreationHandler(method string, url string, t *testing.T, status int, be
 				}
 			}`
 
-	payload := CreateRoom{"JoinChannel", query}
-	marshaledJson, _ := json.Marshal(payload)
-	jsonPayload := strings.NewReader(string(marshaledJson))
-	client := &http.Client{}
-	req, err := http.NewRequest(method, url, jsonPayload)
+	database, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {
-		t.Error(err, " : in CreateRoomHandler ")
+		t.Fatal("DB Connection Failed!")
 	}
-	req.Header.Add("authorization", "Bearer "+bearerToken)
-	req.Header.Add("content-type", "application/json")
-	res, err := client.Do(req)
-	if err != nil {
-		t.Error(err, " : in CreateRoomHandler ")
+	config := generated.Config{
+		Resolvers: &graph.Resolver{DB: database},
 	}
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Error(err, " : in CreateRoomHandler ")
-	}
-	var decodedResponse CreateChannel
-	if res.StatusCode != status {
-		t.Fatal("Create Room Failed! Got", res.Status, " expected ", status)
-	}
-	if status == 200 {
-		json.Unmarshal(body, &decodedResponse)
-	}
-	return decodedResponse
+	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
+	var decodedResponse JoinRoomCreate
+	c.MustPost(query, &decodedResponse)
+	fmt.Print(&decodedResponse)
+	//return decodedResponse
+	return CreateChannel{}
 }
 
 func TestRoomCreation(t *testing.T) {
@@ -166,9 +153,9 @@ func TestRoomCreation(t *testing.T) {
 	createChannelDecoded = RoomCreationHandler(method, url, t, 200, bearerTokenGlobal)
 }
 
-func JoinRoomHandler(url string, method string, Passphrase string, t *testing.T, resStatus int, bearerToken string, status bool) {
-	query := `query JoinChannel($passphrase: String!) {
-					joinChannel(passphrase: $passphrase) {
+func JoinRoomHandler(Passphrase string, t *testing.T, resStatus int, bearerToken string, status bool) {
+	query := fmt.Sprintf(`query JoinChannel(%s: String!) {
+					joinChannel(passphrase: %s) {
 						channel
 						title
 						isHost
@@ -187,56 +174,21 @@ func JoinRoomHandler(url string, method string, Passphrase string, t *testing.T,
 						name
 						email
 					}
-				}`
-	variable := Variables{
-		passphrase: Passphrase,
-	}
-	payload := JoinRoomCreate{"JoinChannel", variable, query}
-	marshaledJson, _ := json.Marshal(payload)
-	jsonPayload := strings.NewReader(string(marshaledJson))
-	client := &http.Client{}
-	req, err := http.NewRequest(method, url, jsonPayload)
+				}`, Passphrase, Passphrase)
+	database, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {
-		t.Error(err, " : in JoinRoomHandler ")
+		t.Fatal("DB Connection Failed!")
 	}
-	req.Header.Add("authorization", "Bearer "+bearerToken)
-	req.Header.Add("content-type", "application/json")
-
-	res, err := client.Do(req)
-	if err != nil {
-		t.Error(err, " : in JoinRoomHandler ")
+	config := generated.Config{
+		Resolvers: &graph.Resolver{DB: database},
 	}
-	defer res.Body.Close()
-	if err != nil {
-		t.Error(err, " : in JoinRoomHandler ")
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Error(err, " : in CreateRoomHandler ")
-	}
-	if res.StatusCode != resStatus {
-		t.Fatal("Join Room Failed!")
-	} else if resStatus == 200 {
-
-		if status {
-			var decodedResponse JoinChannelSuccess
-			err = json.Unmarshal(body, &decodedResponse)
-			if err != nil {
-				t.Fatal("Create Room Failed! Got", res.Status, " expected ", resStatus)
-			}
-		} else {
-			var decodedResponse JoinChannelFailed
-			err = json.Unmarshal(body, &decodedResponse)
-			if err != nil {
-				t.Fatal("Create Room Failed! Got", res.Status, " expected ", resStatus)
-			}
-		}
-	}
+	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
+	var decodedResponse JoinChannelSuccess
+	c.MustPost(query, &decodedResponse)
+	fmt.Print(&decodedResponse)
 }
 
 func TestJoinRoom(t *testing.T) {
-	url := "http://localhost:8080/query"
-	method := "POST"
 
 	testingList := []struct {
 		passPhrase     string
@@ -253,6 +205,6 @@ func TestJoinRoom(t *testing.T) {
 		{passPhrase: createChannelDecoded.Data.CreateChannel.Passphrase.View, isHost: false, bearerToken: bearerTokenGlobal + "ef", responseStatus: 401, status: false},
 	}
 	for _, tc := range testingList {
-		JoinRoomHandler(url, method, tc.passPhrase, t, tc.responseStatus, tc.bearerToken, tc.status)
+		JoinRoomHandler(tc.passPhrase, t, tc.responseStatus, tc.bearerToken, tc.status)
 	}
 }
