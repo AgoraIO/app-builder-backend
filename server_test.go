@@ -6,12 +6,34 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/samyak-jain/agora_backend/graph"
 	"github.com/samyak-jain/agora_backend/graph/generated"
+	"github.com/samyak-jain/agora_backend/migrations"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/routes"
 	"github.com/samyak-jain/agora_backend/utils"
-
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
+
+type GraphQLTestSuite struct {
+	suite.Suite
+	DB                  *models.Database
+	passPhrase          string
+	isHost              bool
+	responseStatus      int
+	bearerToken         string
+	status              bool
+	TestSubtestRunCount int
+}
+
+func (suite *GraphQLTestSuite) SetupSuite() {
+	r := suite.Require()
+	utils.SetupConfig()
+	database, err := models.CreateDB(utils.GetDBURL())
+	suite.DB = database
+	migrations.RunMigration(suite.DB)
+	fmt.Print(suite)
+	r.NoError(err, "Error initializing database")
+}
 
 type CreateChannel struct {
 	Data struct {
@@ -135,8 +157,14 @@ func RoomCreationHandler(method string, url string, t *testing.T, status int, be
 	if err != nil {
 		t.Fatal("DB Connection Failed!")
 	}
+	var GraphQLTestSuite = GraphQLTestSuite{
+		DB:          database,
+		bearerToken: bearerToken,
+	}
+	t.Log(GraphQLTestSuite)
+	GraphQLTestSuite.SetupSuite()
 	config := generated.Config{
-		Resolvers: &graph.Resolver{DB: database},
+		Resolvers: &graph.Resolver{DB: GraphQLTestSuite.DB},
 	}
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
 	var decodedResponse JoinRoomCreate
@@ -153,7 +181,7 @@ func TestRoomCreation(t *testing.T) {
 	createChannelDecoded = RoomCreationHandler(method, url, t, 200, bearerTokenGlobal)
 }
 
-func JoinRoomHandler(Passphrase string, t *testing.T, resStatus int, bearerToken string, status bool) {
+func (suite *GraphQLTestSuite) JoinRoomHandler(Passphrase string, t *testing.T, bearerToken string) {
 	query := fmt.Sprintf(`query JoinChannel(%s: String!) {
 					joinChannel(passphrase: %s) {
 						channel
@@ -175,12 +203,9 @@ func JoinRoomHandler(Passphrase string, t *testing.T, resStatus int, bearerToken
 						email
 					}
 				}`, Passphrase, Passphrase)
-	database, err := models.CreateDB(utils.GetDBURL())
-	if err != nil {
-		t.Fatal("DB Connection Failed!")
-	}
+
 	config := generated.Config{
-		Resolvers: &graph.Resolver{DB: database},
+		Resolvers: &graph.Resolver{DB: suite.DB},
 	}
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
 	var decodedResponse JoinChannelSuccess
@@ -188,9 +213,9 @@ func JoinRoomHandler(Passphrase string, t *testing.T, resStatus int, bearerToken
 	fmt.Print(&decodedResponse)
 }
 
-func TestJoinRoom(t *testing.T) {
-
-	testingList := []struct {
+func (suite *GraphQLTestSuite) TestSubtest() {
+	suite.TestSubtestRunCount++
+	for _, tc := range []struct {
 		passPhrase     string
 		isHost         bool
 		responseStatus int
@@ -203,8 +228,51 @@ func TestJoinRoom(t *testing.T) {
 		{passPhrase: createChannelDecoded.Data.CreateChannel.Passphrase.View + "test", isHost: false, bearerToken: bearerTokenGlobal, responseStatus: 200, status: false},
 		{passPhrase: createChannelDecoded.Data.CreateChannel.Passphrase.Host, isHost: true, bearerToken: bearerTokenGlobal + "wef", responseStatus: 401, status: false},
 		{passPhrase: createChannelDecoded.Data.CreateChannel.Passphrase.View, isHost: false, bearerToken: bearerTokenGlobal + "ef", responseStatus: 401, status: false},
+	} {
+		suite.Run(tc.passPhrase, func() {
+			query := fmt.Sprintf(`query JoinChannel(%s: String!) {
+					joinChannel(passphrase: %s) {
+						channel
+						title
+						isHost
+						mainUser {
+							rtc	
+							rtm
+							uid
+						}
+						screenShare {
+							rtc
+							rtm
+							uid
+						}
+					}
+					getUser {
+						name
+						email
+					}
+				}`, tc.passPhrase, tc.passPhrase)
+
+			config := generated.Config{
+				Resolvers: &graph.Resolver{DB: suite.DB},
+			}
+			c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
+			var decodedResponse JoinChannelSuccess
+			c.MustPost(query, &decodedResponse)
+			fmt.Print(&decodedResponse)
+			suite.Equal(true, true)
+		})
+
 	}
-	for _, tc := range testingList {
-		JoinRoomHandler(tc.passPhrase, t, tc.responseStatus, tc.bearerToken, tc.status)
+}
+
+func TestJoinRoom(t *testing.T) {
+	suite := new(GraphQLTestSuite)
+
+	database, err := models.CreateDB(utils.GetDBURL())
+	if err != nil {
+		t.Fatal("DB Connection Failed!")
 	}
+	suite.DB = database
+	t.Log(suite)
+	suite.Run("Testing Join Room", suite.TestSubtest)
 }
