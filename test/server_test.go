@@ -1,7 +1,9 @@
-package main
+package test
 
 import (
+	"github.com/samyak-jain/agora_backend/migrations"
 	"fmt"
+
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/samyak-jain/agora_backend/graph"
@@ -9,9 +11,16 @@ import (
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/routes"
 	"github.com/samyak-jain/agora_backend/utils"
+	"github.com/stretchr/testify/suite"
 
 	"testing"
 )
+
+type GraphQLTestSuite struct {
+	suite.Suite
+	DB    *models.Database
+	Token string
+}
 
 type CreateChannel struct {
 	Data struct {
@@ -82,6 +91,20 @@ type CreateRoom struct {
 
 var bearerTokenGlobal string
 var createChannelDecoded CreateChannel
+
+func (suite *GraphQLTestSuite) SetupTest() {
+	r := suite.Require()
+
+	utils.SetupConfig()
+	database, err := models.CreateDB(utils.GetDBURL())
+	suite.DB = database
+
+	migrations.RunMigration(suite.DB)
+
+	r.NoError(err, "Error initializing database")
+}
+
+func (suite )
 
 func TestWebOAuthHandler(t *testing.T) {
 	bearerToken, err := utils.GenerateUUID()
