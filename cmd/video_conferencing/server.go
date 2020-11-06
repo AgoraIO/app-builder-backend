@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -34,7 +35,8 @@ import (
 const defaultPort = "8080"
 
 func main() {
-	utils.SetupConfig()
+	configDir := flag.String("config", ".", "Directory which contains the config.json")
+	utils.SetupConfig(configDir)
 
 	port := utils.GetPORT(defaultPort)
 
@@ -44,8 +46,10 @@ func main() {
 		return
 	}
 
+	defer database.Close()
+
 	if viper.GetBool("RUN_MIGRATION") {
-		migrations.RunMigration()
+		migrations.RunMigration(database)
 	}
 
 	router := mux.NewRouter()

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/viper"
@@ -13,16 +14,32 @@ type AgoraConfig struct {
 }
 
 // SetupConfig configures the boilerplate for viper
-func SetupConfig() {
+func SetupConfig(configDir *string) error {
 	viper.SetConfigName("config.json")
 	viper.SetConfigType("json")
-	viper.AddConfigPath(".")
+
+	if configDir == nil {
+		viper.AddConfigPath(".")
+	} else {
+		viper.AddConfigPath(*configDir)
+	}
+
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error config file: %s", err))
+		return fmt.Errorf("Fatal error config file: %s", err)
 	}
 
 	viper.AutomaticEnv()
+	return CheckRequired()
+}
+
+// CheckRequired checks if all the required environment is set
+func CheckRequired() error {
+	if !viper.IsSet("APP_ID") || !viper.IsSet("APP_CERTIFICATE") || !viper.IsSet("SCHEME") {
+		return errors.New("Please Make sure APP_ID,APP_CERTIFICATE and SCHEME are set")
+	}
+
+	return nil
 }
 
 // GetPORT fetches the PORT
