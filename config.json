@@ -1,18 +1,1 @@
-{
-    "APP_ID": "",
-    "APP_CERTIFICATE": "",
-    "CUSTOMER_ID": "",
-    "CUSTOMER_CERTIFICATE": "",
-    "BUCKET_NAME": "",
-    "BUCKET_ACCESS_KEY": "",
-    "BUCKET_ACCESS_SECRET": "",
-    "CLIENT_ID": "",
-    "CLIENT_SECRET": "",
-    "PSTN_USERNAME": "",
-    "PSTN_PASSWORD": "",
-    "PSTN_NUMBER": "",
-    "SCHEME": "",
-    "ALLOWED_ORIGIN": "",
-    "ENABLE_NEWRELIC_MONITORING": false,
-    "RUN_MIGRATION": true
-}
+{}

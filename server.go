@@ -33,6 +33,8 @@ import (
 
 const defaultPort = "8080"
 
+
+
 func main() {
 	utils.SetupConfig()
 
@@ -100,7 +102,6 @@ func main() {
 	}
 
 	middlewareHandler.UseHandler(router)
-
 	log.Debug().Str("PORT", port)
 	log.Fatal().Err(http.ListenAndServe(":"+port, middlewareHandler))
 }

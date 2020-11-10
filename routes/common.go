@@ -3,12 +3,11 @@ package routes
 import (
 	"encoding/json"
 	"errors"
+	"github.com/rs/zerolog/log"
+	"github.com/samyak-jain/agora_backend/utils"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/rs/zerolog/log"
-	"github.com/samyak-jain/agora_backend/utils"
 
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/spf13/viper"
@@ -35,6 +34,23 @@ type Router struct {
 type TokenTemplate struct {
 	Token  string
 	Scheme string
+}
+
+func TokenGenerator(db *models.Database, user GoogleOAuthUser, bearerToken string) {
+	var userData models.User
+	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
+		db.Create(&models.User{
+			Name:  user.GivenName,
+			Email: user.Email,
+			Tokens: []models.Token{{
+				TokenID: bearerToken,
+			}},
+		})
+	} else {
+		db.Model(&userData).Association("Tokens").Append(models.Token{
+			TokenID: bearerToken,
+		})
+	}
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
@@ -132,21 +148,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		log.Error().Err(err).Msg("Could not generate bearer token")
 		return nil, nil, err
 	}
-
-	var userData models.User
-	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
-		db.Create(&models.User{
-			Name:  user.GivenName,
-			Email: user.Email,
-			Tokens: []models.Token{{
-				TokenID: bearerToken,
-			}},
-		})
-	} else {
-		db.Model(&userData).Association("Tokens").Append(models.Token{
-			TokenID: bearerToken,
-		})
-	}
+	TokenGenerator(db, user, bearerToken)
 
 	return &redirect, &bearerToken, nil
 }

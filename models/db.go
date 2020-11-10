@@ -18,7 +18,6 @@ func CreateDB(dbURL string) (*Database, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// TODO: Setup Production Migrations
 	return &Database{db}, nil
 }
