@@ -22,6 +22,8 @@ func SetupConfig() {
 		panic(fmt.Errorf("Fatal error config file: %s", err))
 	}
 
+	viper.SetDefault("RECORDING_VENDOR", 1)
+	viper.SetDefault("RECORDING_REGION", 0)
 	viper.AutomaticEnv()
 }
 

@@ -13,6 +13,7 @@
 *.out
 
 .envrc
+.vscode
 logs/
 data/
 
