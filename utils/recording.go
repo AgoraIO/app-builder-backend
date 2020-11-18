@@ -93,8 +93,8 @@ func (rec *Recorder) Start(secret *string) error {
 					}
 				},
 				"storageConfig": {
-					"vendor": 1, 
-					"region": 0,
+					"vendor": %d,
+					"region": %d,
 					"bucket": "%s",
 					"accessKey": "%s",
 					"secretKey": "%s",
@@ -102,8 +102,8 @@ func (rec *Recorder) Start(secret *string) error {
 				}
 			}
 		}
-	`, rec.Channel, rec.UID, rec.Token, *secret, viper.GetString("BUCKET_NAME"),
-			viper.GetString("BUCKET_ACCESS_KEY"), viper.GetString("BUCKET_ACCESS_SECRET"),
+	`, rec.Channel, rec.UID, rec.Token, *secret, viper.GetInt("RECORDING_VENDOR"), viper.GetInt("RECORDING_REGION"),
+			viper.GetString("BUCKET_NAME"), viper.GetString("BUCKET_ACCESS_KEY"), viper.GetString("BUCKET_ACCESS_SECRET"),
 			rec.Channel, currentTime)
 	} else {
 		requestBody = fmt.Sprintf(`
@@ -126,7 +126,7 @@ func (rec *Recorder) Start(secret *string) error {
 					}
 				},
 				"storageConfig": {
-					"vendor": %d, 
+					"vendor": %d,
 					"region": %d,
 					"bucket": "%s",
 					"accessKey": "%s",
