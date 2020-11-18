@@ -25,6 +25,9 @@ func SetupConfig() {
 	viper.SetDefault("RECORDING_VENDOR", 1)
 	viper.SetDefault("RECORDING_REGION", 0)
 	viper.AutomaticEnv()
+	if viper.GetString("ENABLE_OAUTH") == "false" {
+		viper.Set("ENABLE_OAUTH", false)
+	}
 }
 
 // GetPORT fetches the PORT
