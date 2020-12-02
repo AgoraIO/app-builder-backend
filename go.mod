@@ -15,6 +15,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.20.0
 	github.com/spf13/viper v1.7.0
+	github.com/stretchr/testify v1.6.1
 	github.com/urfave/negroni v1.0.0
 	github.com/vektah/gqlparser/v2 v2.0.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
