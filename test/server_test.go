@@ -1,6 +1,13 @@
 package test
 
 import (
+	"fmt"
+	"testing"
+
+	"github.com/99designs/gqlgen/client"
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/samyak-jain/agora_backend/graph"
+	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/migrations"
 	"github.com/samyak-jain/agora_backend/models"
 	"github.com/samyak-jain/agora_backend/utils"
@@ -126,43 +133,35 @@ func (suite *GraphQLTestSuite) SetupTest() {
 // }
 
 // //CHANGE HERE
-// func RoomCreationHandler(method string, url string, t *testing.T, status int, bearerToken string) CreateChannel {
-// 	query := `mutation CreateChannel($title: String!, $enablePSTN: Boolean) {
-// 				createChannel(title: $title, enablePSTN: $enablePSTN) {
-// 					passphrase {
-// 						host
-// 						view
-// 					}
-// 					channel
-// 					title
-// 					pstn {
-// 						number
-// 						dtmf
-// 					}
-// 					}
-// 				}
-// 			}`
+func (suite *GraphQLTestSuite) RoomCreationHandler() CreateChannel {
+	query := `mutation CreateChannel($title: String!, $enablePSTN: Boolean) {
+				createChannel(title: $title, enablePSTN: $enablePSTN) {
+					passphrase {
+						host
+						view
+					}
+					channel
+					title
+					pstn {
+						number
+						dtmf
+					}
+					}
+				}
+			}`
 
-// 	database, err := models.CreateDB(utils.GetDBURL())
-// 	if err != nil {
-// 		t.Fatal("DB Connection Failed!")
-// 	}
-// 	var GraphQLTestSuite = GraphQLTestSuite{
-// 		DB:          database,
-// 		bearerToken: bearerToken,
-// 	}
-// 	t.Log(GraphQLTestSuite)
-// 	GraphQLTestSuite.SetupSuite()
-// 	config := generated.Config{
-// 		Resolvers: &graph.Resolver{DB: GraphQLTestSuite.DB},
-// 	}
-// 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
-// 	var decodedResponse JoinRoomCreate
-// 	c.MustPost(query, &decodedResponse)
-// 	fmt.Print(&decodedResponse)
-// 	//return decodedResponse
-// 	return CreateChannel{}
-// }
+	fmt.Print(suite)
+	config := generated.Config{
+		Resolvers: &graph.Resolver{DB: suite.DB},
+	}
+	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
+	var decodedResponse JoinRoomCreate
+	c.MustPost(query, &decodedResponse)
+	suite.T().Log("testing done over")
+	fmt.Print(&decodedResponse)
+	//return decodedResponse
+	return CreateChannel{}
+}
 
 // func TestRoomCreation(t *testing.T) {
 // 	url := "http://localhost:8080/query"
@@ -255,14 +254,8 @@ func (suite *GraphQLTestSuite) SetupTest() {
 // 	}
 // }
 
-// func TestJoinRoom(t *testing.T) {
-// 	suite := new(GraphQLTestSuite)
+func TestGraphQLTestSuite(t *testing.T) {
 
-// 	database, err := models.CreateDB(utils.GetDBURL())
-// 	if err != nil {
-// 		t.Fatal("DB Connection Failed!")
-// 	}
-// 	suite.DB = database
-// 	t.Log(suite)
-// 	suite.Run("Testing Join Room", suite.TestSubtest)
-// }
+	GraphQLTest := new(GraphQLTestSuite)
+	suite.Run(t, GraphQLTest)
+}
