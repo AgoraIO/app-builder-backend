@@ -13,13 +13,8 @@ type Channel struct {
 	HostPassphrase   string
 	ViewerPassphrase string
 	DTMF             string
-	Recording        Recording
+	UID              int
+	SID              string
+	RID              string
 	Hosts            User
-}
-
-// Recording contains the details ßof the recording session
-type Recording struct {
-	UID int
-	SID string
-	RID string
 }
