@@ -33,8 +33,6 @@ import (
 
 const defaultPort = "8080"
 
-
-
 func main() {
 	utils.SetupConfig()
 
@@ -47,7 +45,7 @@ func main() {
 	}
 
 	if viper.GetBool("RUN_MIGRATION") {
-		migrations.RunMigration()
+		migrations.RunMigration(database)
 	}
 
 	router := mux.NewRouter()
