@@ -17,22 +17,23 @@ import (
 
 type GraphQLTestSuite struct {
 	suite.Suite
-	DB                  *models.Database
-	passPhrase          string
-	isHost              bool
-	responseStatus      int
-	bearerToken         string
-	status              bool
-	TestSubtestRunCount int
+	DB                   *models.Database
+	Token                string
+	createChannelDecoded CreateChannel
 }
 
 func (suite *GraphQLTestSuite) SetupSuite() {
-	//r := suite.Require()
+	r := suite.Require()
+	token, err := utils.GenerateUUID()
+	if err != nil {
+		r.Error(err, " : in creating bearer token ")
+	}
 	utils.SetupConfig()
 	database, err := models.CreateDB(utils.GetDBURL())
-	//r.NoError(err, "Error initializing database")
-	fmt.Print(err)
-	fmt.Print(database)
+	if err != nil {
+		r.Error(err, " : Error initializing database ")
+	}
+	suite.Token = token
 	suite.DB = database
 	migrations.RunMigration(suite.DB)
 
@@ -101,16 +102,8 @@ type CreateRoom struct {
 	query         string
 }
 
-var bearerTokenGlobal string
-var createChannelDecoded CreateChannel
+func (suite *GraphQLTestSuite) WebOAuthHandler(t *testing.T) {
 
-func TestWebOAuthHandler(t *testing.T) {
-
-	bearerToken, err := utils.GenerateUUID()
-	if err != nil {
-		t.Error(err, " : in WebOauthHandler ")
-	}
-	bearerTokenGlobal = bearerToken
 	database, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {
 		t.Error("DB Creation Failed!")
@@ -120,10 +113,10 @@ func TestWebOAuthHandler(t *testing.T) {
 		GivenName   string
 		bearerToken string
 	}{
-		{email: "test@testing.com", GivenName: "Testing Acc", bearerToken: bearerToken},    // ideal case
-		{email: "test1@testing.com", GivenName: "Testing Acc 1", bearerToken: bearerToken}, //Same Bearer Token for both.
-		{email: "", GivenName: "Testing Acc 1", bearerToken: bearerToken},                  //Email nil.
-		{email: "test2@testing.com", GivenName: "", bearerToken: bearerToken},              //Name Nil.
+		{email: "test@testing.com", GivenName: "Testing Acc", bearerToken: suite.Token},    // ideal case
+		{email: "test1@testing.com", GivenName: "Testing Acc 1", bearerToken: suite.Token}, //Same Bearer Token for both.
+		{email: "", GivenName: "Testing Acc 1", bearerToken: suite.Token},                  //Email nil.
+		{email: "test2@testing.com", GivenName: "", bearerToken: suite.Token},              //Name Nil.
 	}
 	var user routes.GoogleOAuthUser
 	var tokenData models.Token
@@ -162,7 +155,7 @@ func RoomCreationHandler(t *testing.T, bearerToken string) CreateChannel {
 	//}
 	var GraphQLTestSuite = GraphQLTestSuite{
 		//DB:          database,
-		bearerToken: bearerToken,
+		Token: bearerToken,
 	}
 	GraphQLTestSuite.SetupSuite()
 	config := generated.Config{
@@ -181,19 +174,19 @@ func RoomCreationHandler(t *testing.T, bearerToken string) CreateChannel {
 	return decodedResponse
 }
 
-func TestRoomCreation(t *testing.T) {
-	createChannelDecoded = RoomCreationHandler(t, bearerTokenGlobal+"wef") // Not Authorized
-	createChannelDecoded = RoomCreationHandler(t, bearerTokenGlobal)       // Working case.
+func (suite *GraphQLTestSuite) RoomCreation(t *testing.T) {
+	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token+"wef") // Not Authorized
+	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token)       // Working case.
 }
 
-func TestJoinRoom(t *testing.T) {
+func (suite *GraphQLTestSuite) JoinRoom(t *testing.T) {
 	database, err := models.CreateDB(utils.GetDBURL())
 	if err != nil {
 		t.Fatal("DB Connection Failed!")
 	}
 	var GraphQLTestSuite = GraphQLTestSuite{
-		DB:          database,
-		bearerToken: bearerTokenGlobal,
+		DB:    database,
+		Token: suite.Token,
 	}
 	GraphQLTestSuite.SetupSuite()
 	config := generated.Config{
@@ -207,12 +200,12 @@ func TestJoinRoom(t *testing.T) {
 		bearerToken    string
 		status         bool
 	}{
-		{passPhrase: createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: bearerTokenGlobal, status: true},
-		{passPhrase: createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: bearerTokenGlobal, status: true},
-		{passPhrase: createChannelDecoded.CreateChannel.Passphrase.Host + "test", isHost: true, bearerToken: bearerTokenGlobal, status: false},
-		{passPhrase: createChannelDecoded.CreateChannel.Passphrase.View + "test", isHost: false, bearerToken: bearerTokenGlobal, status: false},
-		{passPhrase: createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: bearerTokenGlobal + "wef", status: false},
-		{passPhrase: createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: bearerTokenGlobal + "ef", status: false},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token, status: true},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token, status: true},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host + "test", isHost: true, bearerToken: suite.Token, status: false},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View + "test", isHost: false, bearerToken: suite.Token, status: false},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token + "wef", status: false},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token + "ef", status: false},
 	} {
 		query := `query JoinChannel($passphrase: String!) {
 					joinChannel(passphrase: $passphrase) {
@@ -246,4 +239,9 @@ func TestJoinRoom(t *testing.T) {
 		assert.Equal(t, true, true) // change here
 
 	}
+}
+
+func TestGraphQLTestSuite(t *testing.T) {
+	GraphQLTest := new(GraphQLTestSuite)
+	suite.Run(t, GraphQLTest)
 }
