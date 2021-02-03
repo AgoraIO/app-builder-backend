@@ -104,10 +104,6 @@ type CreateRoom struct {
 
 func (suite *GraphQLTestSuite) WebOAuthHandler(t *testing.T) {
 
-	database, err := models.CreateDB(utils.GetDBURL())
-	if err != nil {
-		t.Error("DB Creation Failed!")
-	}
 	testingList := []struct {
 		email       string
 		GivenName   string
@@ -124,13 +120,13 @@ func (suite *GraphQLTestSuite) WebOAuthHandler(t *testing.T) {
 		tc := tc
 		user.GivenName = tc.GivenName
 		user.Email = tc.email
-		routes.TokenGenerator(database, user, tc.bearerToken)
-		assert.Equal(t, database.Where("token_id = ?", tc.bearerToken).First(&tokenData).RecordNotFound(), false)
+		routes.TokenGenerator(suite.DB, user, tc.bearerToken)
+		assert.Equal(t, suite.DB.Where("token_id = ?", tc.bearerToken).First(&tokenData).RecordNotFound(), false)
 	}
 }
 
 //CHANGE HERE
-func RoomCreationHandler(t *testing.T, bearerToken string) CreateChannel {
+func RoomCreationHandler(t *testing.T, bearerToken string, db *models.Database) CreateChannel {
 	query := `mutation CreateChannel($title: String!, $enablePSTN: Boolean) {
 				createChannel(title: $title, enablePSTN: $enablePSTN) {
 					passphrase {
@@ -153,13 +149,8 @@ func RoomCreationHandler(t *testing.T, bearerToken string) CreateChannel {
 	//if err != nil {
 	//	t.Fatal("DB Connection Failed!")
 	//}
-	var GraphQLTestSuite = GraphQLTestSuite{
-		//DB:          database,
-		Token: bearerToken,
-	}
-	GraphQLTestSuite.SetupSuite()
 	config := generated.Config{
-		Resolvers: &graph.Resolver{DB: GraphQLTestSuite.DB},
+		Resolvers: &graph.Resolver{DB: db},
 	}
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
 	var decodedResponse CreateChannel
@@ -175,22 +166,14 @@ func RoomCreationHandler(t *testing.T, bearerToken string) CreateChannel {
 }
 
 func (suite *GraphQLTestSuite) RoomCreation(t *testing.T) {
-	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token+"wef") // Not Authorized
-	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token)       // Working case.
+	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token+"wef", suite.DB) // Not Authorized
+	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token, suite.DB)       // Working case.
 }
 
 func (suite *GraphQLTestSuite) JoinRoom(t *testing.T) {
-	database, err := models.CreateDB(utils.GetDBURL())
-	if err != nil {
-		t.Fatal("DB Connection Failed!")
-	}
-	var GraphQLTestSuite = GraphQLTestSuite{
-		DB:    database,
-		Token: suite.Token,
-	}
-	GraphQLTestSuite.SetupSuite()
+
 	config := generated.Config{
-		Resolvers: &graph.Resolver{DB: GraphQLTestSuite.DB},
+		Resolvers: &graph.Resolver{DB: suite.DB},
 	}
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(config)))
 	for _, tc := range []struct {
