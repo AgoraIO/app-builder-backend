@@ -161,7 +161,9 @@ func RoomCreationHandler(t *testing.T, bearerToken string, db *models.Database) 
 			"enablePSTN": true,
 		}
 	})
+	var channelData models.Channel
 	assert.Equal(t, decodedResponse.CreateChannel.Title, "Hey") //change this
+	assert.Equal(t, db.Where("hostpassphrase = ?", decodedResponse.CreateChannel.Passphrase.Host).First(&channelData).RecordNotFound(), false)
 	return decodedResponse
 }
 
@@ -183,12 +185,12 @@ func (suite *GraphQLTestSuite) JoinRoom(t *testing.T) {
 		bearerToken    string
 		status         bool
 	}{
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token, status: true},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token, status: true},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host + "test", isHost: true, bearerToken: suite.Token, status: false},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View + "test", isHost: false, bearerToken: suite.Token, status: false},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token + "wef", status: false},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token + "ef", status: false},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host + "test", isHost: true, bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View + "test", isHost: false, bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token + "wef"},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token + "ef"},
 	} {
 		query := `query JoinChannel($passphrase: String!) {
 					joinChannel(passphrase: $passphrase) {
@@ -219,7 +221,7 @@ func (suite *GraphQLTestSuite) JoinRoom(t *testing.T) {
 			}
 		})
 		fmt.Print(&decodedResponse)
-		assert.Equal(t, true, true) // change here
+		assert.Equal(t, true, true) // Can't do anything for this. Need to figure out.
 
 	}
 }
