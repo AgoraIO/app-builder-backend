@@ -1,4 +1,4 @@
-package routes
+package oauth
 
 import (
 	"fmt"

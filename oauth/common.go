@@ -1,19 +1,19 @@
-package routes
+package oauth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 
+	"github.com/coreos/go-oidc"
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/utils"
 
 	"github.com/samyak-jain/agora_backend/models"
-	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 // GoogleOAuthUser contains all the information that we get as a response from oauth in google
@@ -37,6 +37,74 @@ type TokenTemplate struct {
 	Scheme string
 }
 
+// Details contains all the OAuth related information parsed from the request
+type Details struct {
+	Code        string
+	RedirectURL string
+	BackendURL  string
+	OAuthSite   string
+}
+
+func parseState(r *http.Request) (*Details, error) {
+	code := r.FormValue("code")
+	if len(code) <= 0 {
+		log.Error().Str("code", code).Msg("Code is empty")
+		return nil, errors.New("Code is empty")
+	}
+
+	state := r.FormValue("state")
+	if len(state) <= 0 {
+		log.Error().Str("state", state).Msg("State is empty")
+		return nil, errors.New("State is empty")
+	}
+
+	decodedState, err := url.QueryUnescape(state)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not url decode state")
+		return nil, err
+	}
+
+	parsedState, err := url.ParseQuery(decodedState)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not parse deocoded state")
+		return nil, err
+	}
+
+	redirect := parsedState.Get("redirect")
+	if len(redirect) <= 0 {
+		log.Error().Str("redirect", redirect).Msg("Redirect URL is empty")
+		return nil, errors.New("Redirect URL is empty")
+	}
+
+	backendURL := parsedState.Get("backend")
+	if len(backendURL) <= 0 {
+		log.Error().Str("backend", backendURL).Msg("Backend URL is empty")
+		return nil, errors.New("Backend URL is empty")
+	}
+
+	// Remove trailing slash from URL
+	runeBackendURL := []rune(backendURL)
+	if runeBackendURL[len(runeBackendURL)-1] == '/' {
+		runeBackendURL = runeBackendURL[:len(runeBackendURL)-1]
+	}
+
+	finalBackendURL := string(runeBackendURL)
+
+	site := parsedState.Get("site")
+
+	// Let's assume by default that we are using Google OAuth
+	if site == "" {
+		site = "google"
+	}
+
+	return &Details{
+		Code:        code,
+		RedirectURL: redirect,
+		BackendURL:  finalBackendURL,
+		OAuthSite:   site,
+	}, nil
+}
+
 // Handler is the handler that will do most of the heavy lifting for OAuth
 func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platform string) (*string, *string, error) {
 	err := r.ParseForm()
@@ -46,61 +114,33 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		return nil, nil, err
 	}
 
-	code := r.FormValue("code")
-	state := r.FormValue("state")
-
-	decodedState, err := url.QueryUnescape(state)
+	oauthDetails, err := parseState(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Error().Err(err).Msg("Could not url decode state")
+		return nil, nil, err
+	}
+	var provider *oidc.Provider
+
+	oauthConfig, userInfoURL, err := GetOAuthConfig(oauthDetails.OAuthSite, oauthDetails.BackendURL+"/oauth/"+platform)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return nil, nil, err
 	}
 
-	parsedState, err := url.ParseQuery(decodedState)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Msg("Could not parse deocoded state")
+		log.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Msg("Could not exchange code for access token")
 		return nil, nil, err
 	}
 
-	redirect := parsedState.Get("redirect")
-	backendURL := parsedState.Get("backend") // Remove trailing slash
-	runeBackendURL := []rune(backendURL)
-	if runeBackendURL[len(runeBackendURL)-1] == '/' {
-		runeBackendURL = runeBackendURL[:len(runeBackendURL)-1]
+	if oauthDetails.OAuthSite == "apple" {
+
 	}
 
-	finalBackendURL := string(runeBackendURL)
-	var oauthConfig *oauth2.Config
-	var userInfoURL string
-
-	switch site := parsedState.Get("site"); site {
-	case "google":
-		oauthConfig = &oauth2.Config{
-			ClientID:     viper.GetString("CLIENT_ID"),
-			ClientSecret: viper.GetString("CLIENT_SECRET"),
-			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
-			Endpoint:     google.Endpoint,
-			RedirectURL:  finalBackendURL + "/oauth/" + platform,
-		}
-		userInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		log.Warn().Msg("Unknown state parameter passed")
-		return nil, nil, nil
-	}
-
-	token, err := oauthConfig.Exchange(oauth2.NoContext, code)
+	response, err := http.Get(*userInfoURL + token.AccessToken)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("code", code).Msg("Could not exchange code for access token")
-		return nil, nil, err
-	}
-
-	response, err := http.Get(userInfoURL + token.AccessToken)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("code", code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
+		log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
 		return nil, nil, err
 	}
 	defer response.Body.Close()
@@ -117,12 +157,17 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
-		return nil, nil, err
 	}
 
-	if !user.VerifiedEmail {
+	ctx := context.Background()
+	userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
+	if err != nil {
+		log.Error().Err(err).Str("token", token.AccessToken).Msg("Could not get user info from token")
+	}
+
+	if !userInfo.EmailVerified {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Error().Err(err).Str("email", user.Email).Msg("Email is not verified")
+		log.Error().Err(err).Str("email", userInfo.Email).Msg("Email is not verified")
 		return nil, nil, errors.New("Email is not verified")
 	}
 
@@ -148,5 +193,5 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		})
 	}
 
-	return &redirect, &bearerToken, nil
+	return &oauthDetails.RedirectURL, &bearerToken, nil
 }

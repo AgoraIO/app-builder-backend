@@ -1,11 +1,11 @@
-package routes
+package oauth
 
 import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"text/template"
 	"strings"
+	"text/template"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"

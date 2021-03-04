@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/samyak-jain/agora_backend/migrations"
+	"github.com/samyak-jain/agora_backend/oauth"
 
 	"github.com/spf13/viper"
 
@@ -16,7 +17,6 @@ import (
 
 	"github.com/rs/cors"
 	"github.com/samyak-jain/agora_backend/middleware"
-	"github.com/samyak-jain/agora_backend/routes"
 
 	"github.com/samyak-jain/agora_backend/models"
 
@@ -55,7 +55,7 @@ func main() {
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
-	requestHandler := routes.Router{DB: database}
+	requestHandler := oauth.Router{DB: database}
 
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	router.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
