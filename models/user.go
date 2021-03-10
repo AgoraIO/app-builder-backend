@@ -8,7 +8,7 @@ import (
 type User struct {
 	gorm.Model
 	Name   string
-	Email  string  `gorm:"primary_key"`
+	ID     string  `gorm:"primary_key"`
 	Tokens []Token `gorm:"foreignkey:UserEmail;association_foreignkey:Email"`
 }
 

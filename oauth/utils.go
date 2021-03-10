@@ -41,17 +41,11 @@ func GetOAuthConfig(site string, redirectURI string) (*oauth2.Config, *string, e
 			RedirectURL:  redirectURI,
 		}, &userInfoURL, nil
 	case "apple":
-		userInfoURL := "https://slack.com/api/users.info"
-		return &oauth2.Config{
-			ClientID:     viper.GetString("CLIENT_ID"),
-			ClientSecret: viper.GetString("CLIENT_SECRET"),
-			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
-			Endpoint: oauth2.Endpoint{
-				AuthURL:  "https://appleid.apple.com/auth/authorize",
-				TokenURL: "https://appleid.apple.com/auth/token",
-			},
-			RedirectURL: redirectURI,
-		}, &userInfoURL, nil
+		provider, err = oidc.NewProvider(ctx, "https://appleid.apple.com")
+		if err != nil {
+			log.Error().Err(err).Msg("Apple Provider failed")
+			return nil, nil, err
+		}
 	default:
 		log.Error().Msg("Unknown state parameter passed")
 		return nil, nil, errors.New("Unknow state parameter passed")
@@ -75,17 +69,41 @@ func GetOAuthConfig(site string, redirectURI string) (*oauth2.Config, *string, e
 	}, &claims.UserInfoEndpoint, nil
 }
 
-// ExchangeToken gets the access token from the code.
-func ExchangeToken(oauthConfig oauth2.Config, oauthDetails Details) (*oauth2.Token, *string, error) {
+// GetUserInfo fetches the User Info from the Open ID Endpoint
+func GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc.Provider) (*User, error) {
 	token, err := oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
 	if err != nil {
-
+		log.Error().Err(err).Interface("OAuth Details", oauthDetails).Interface("config", oauthConfig).Msg("OAuth Token Exchange failed")
+		return nil, err
 	}
 
-	// Special case for Apple OAuth.
-	// Apple OAuth flow does not have a serparate UserInfo API.
-	// All UserInfo is fetched from the id_token which is a JWT containing the info
 	if oauthDetails.OAuthSite == "apple" {
-		id_token := token.Extra("id_token")
+		rawIDToken, ok := token.Extra("id_token").(string)
+		if !ok {
+			log.Error().Interface("token", token).Msg("Could not get id_token from apple token")
+			return nil, errors.New("Could not get id_token from apple token")
+		}
+		idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: oauthConfig.ClientID})
+		idToken, err := idTokenVerifier.Verify(oauth2.NoContext, rawIDToken)
+		if err != nil {
+			log.Error().Str("rawIDToken", rawIDToken).Interface("idTokenVerifier", idTokenVerifier).Interface("OAuth Config", oauthConfig).Interface("OAuth Details", oauthDetails).Msg("Could not verify id_token")
+			return nil, errors.New("Could not verify id_token")
+		}
+
+		return &User{ID: idToken.Subject, EmailVerified: true}, nil
+
 	}
+
+	tokenSource := oauthConfig.TokenSource(oauth2.NoContext, token)
+	userInfo, err := provider.UserInfo(oauth2.NoContext, tokenSource)
+	if err != nil {
+		log.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Interface("token", token).Msg("Fetching UserInfo Failed")
+		return nil, err
+	}
+
+	return &User{
+		ID:            userInfo.Subject,
+		Name:          userInfo.Profile,
+		EmailVerified: userInfo.EmailVerified,
+	}, nil
 }

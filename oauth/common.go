@@ -1,10 +1,7 @@
 package oauth
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -13,17 +10,13 @@ import (
 	"github.com/samyak-jain/agora_backend/utils"
 
 	"github.com/samyak-jain/agora_backend/models"
-	"golang.org/x/oauth2"
 )
 
-// GoogleOAuthUser contains all the information that we get as a response from oauth in google
-type GoogleOAuthUser struct {
-	GivenName     string `json:"given_name"`
-	VerifiedEmail bool   `json:"verified_email"`
-	Picture       string
-	Locale        string
+// User contains all the information that we get as a response from oauth
+type User struct {
 	ID            string
-	Email         string
+	Name          string
+	EmailVerified bool
 }
 
 // Router refers to all the oauth endpoints
@@ -133,41 +126,14 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		return nil, nil, err
 	}
 
-	if oauthDetails.OAuthSite == "apple" {
-
-	}
-
-	response, err := http.Get(*userInfoURL + token.AccessToken)
+	userInfo, err := GetUserInfo(*oauthConfig, *oauthDetails, provider)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
 		return nil, nil, err
-	}
-	defer response.Body.Close()
-
-	contents, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Msg("Could not read response body")
-		return nil, nil, err
-	}
-
-	var user GoogleOAuthUser
-	err = json.Unmarshal(contents, &user)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
-	}
-
-	ctx := context.Background()
-	userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
-	if err != nil {
-		log.Error().Err(err).Str("token", token.AccessToken).Msg("Could not get user info from token")
 	}
 
 	if !userInfo.EmailVerified {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Error().Err(err).Str("email", userInfo.Email).Msg("Email is not verified")
+		log.Error().Str("Sub", userInfo.ID).Interface("OAuth Details", oauthDetails).Interface("OAuth Config", oauthConfig).Msg("Email is not verified")
 		return nil, nil, errors.New("Email is not verified")
 	}
 
