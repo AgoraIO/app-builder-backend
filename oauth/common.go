@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/coreos/go-oidc"
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/utils"
 
@@ -15,8 +14,8 @@ import (
 // User contains all the information that we get as a response from oauth
 type User struct {
 	ID            string
-	Name          string
-	EmailVerified bool
+	Name          string `json:"given_name"`
+	EmailVerified bool   `json:"verified_email"`
 }
 
 // Router refers to all the oauth endpoints
@@ -112,17 +111,10 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		w.WriteHeader(http.StatusBadRequest)
 		return nil, nil, err
 	}
-	var provider *oidc.Provider
 
-	oauthConfig, userInfoURL, err := GetOAuthConfig(oauthDetails.OAuthSite, oauthDetails.BackendURL+"/oauth/"+platform)
+	oauthConfig, provider, err := GetOAuthConfig(oauthDetails.OAuthSite, oauthDetails.BackendURL+"/oauth/"+platform)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, nil, err
-	}
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Msg("Could not exchange code for access token")
 		return nil, nil, err
 	}
 
@@ -145,10 +137,8 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	}
 
 	var userData models.User
-	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
+	if db.Where("id = ?", userInfo.ID).First(&userData).RecordNotFound() {
 		db.Create(&models.User{
-			Name:  user.GivenName,
-			Email: user.Email,
 			Tokens: []models.Token{{
 				TokenID: bearerToken,
 			}},
