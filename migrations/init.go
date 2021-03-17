@@ -21,7 +21,7 @@ func RunMigration() {
 
 	//db.AutoMigrate(&models.User{}, &models.Channel{}, &models.Token{})
 	m, err := migrate.New(
-		"file://migrations",
+		"file://migrations/",
 		utils.GetDBURL())
 	if err != nil {
 		log.Fatal(err)
@@ -29,4 +29,8 @@ func RunMigration() {
 	if err := m.Up(); err != nil {
 		log.Fatal(err)
 	}
+	// Uncomment the below lines for migrate down!
+	//if err := m.Down(); err != nil {
+	//	log.Fatal(err)
+	//}
 }
