@@ -102,7 +102,7 @@ type CreateRoom struct {
 	query         string
 }
 
-func (suite *GraphQLTestSuite) WebOAuthHandler(t *testing.T) {
+func (suite *GraphQLTestSuite) WebOAuthHandler() {
 
 	testingList := []struct {
 		email       string
@@ -121,7 +121,7 @@ func (suite *GraphQLTestSuite) WebOAuthHandler(t *testing.T) {
 		user.GivenName = tc.GivenName
 		user.Email = tc.email
 		routes.TokenGenerator(suite.DB, user, tc.bearerToken)
-		assert.Equal(t, suite.DB.Where("token_id = ?", tc.bearerToken).First(&tokenData).RecordNotFound(), false)
+		assert.Equal(suite.T(), suite.DB.Where("token_id = ?", tc.bearerToken).First(&tokenData).RecordNotFound(), false)
 	}
 }
 
@@ -167,12 +167,12 @@ func RoomCreationHandler(t *testing.T, bearerToken string, db *models.Database) 
 	return decodedResponse
 }
 
-func (suite *GraphQLTestSuite) RoomCreation(t *testing.T) {
-	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token+"wef", suite.DB) // Not Authorized
-	suite.createChannelDecoded = RoomCreationHandler(t, suite.Token, suite.DB)       // Working case.
+func (suite *GraphQLTestSuite) RoomCreation() {
+	suite.createChannelDecoded = RoomCreationHandler(suite.T(), suite.Token+"wef", suite.DB) // Not Authorized
+	suite.createChannelDecoded = RoomCreationHandler(suite.T(), suite.Token, suite.DB)       // Working case.
 }
 
-func (suite *GraphQLTestSuite) JoinRoom(t *testing.T) {
+func (suite *GraphQLTestSuite) JoinRoom() {
 
 	config := generated.Config{
 		Resolvers: &graph.Resolver{DB: suite.DB},
@@ -221,7 +221,7 @@ func (suite *GraphQLTestSuite) JoinRoom(t *testing.T) {
 			}
 		})
 		fmt.Print(&decodedResponse)
-		assert.Equal(t, true, true) // Can't do anything for this. Need to figure out.
+		assert.Equal(suite.T(), true, true) // Can't do anything for this. Need to figure out.
 
 	}
 }
