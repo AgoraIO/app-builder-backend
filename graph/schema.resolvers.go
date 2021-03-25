@@ -29,7 +29,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 	if viper.GetBool("ENABLE_OAUTH") {
 		authUser := middleware.GetUserFromContext(ctx)
 		if authUser == nil {
-			r.Logger.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+			r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
 			return nil, errors.New("Invalid Token")
 		}
 	}
@@ -120,19 +120,18 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
-		r.Logger.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
-	user := &models.User{Email: authUser.Email}
+	user := &models.User{ID: authUser.ID}
 	if err := r.DB.Model(&user).Update("name", name).Error; err != nil {
 		r.Logger.Error().Err(err).Msg("Username update failed")
 		return nil, errInternalServer
 	}
 
 	return &model.User{
-		Name:  name,
-		Email: authUser.Email,
+		Name: name,
 	}, nil
 }
 
@@ -231,7 +230,7 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
-		r.Logger.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
@@ -249,7 +248,7 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 	}
 
 	if tokenIndex == -1 {
-		r.Logger.Debug().Str("Email", authUser.Email).Msg("Token does not exist")
+		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Token does not exist")
 		return nil, errBadRequest
 	}
 
@@ -266,11 +265,11 @@ func (r *mutationResolver) LogoutAllSessions(ctx context.Context) (*string, erro
 
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
-		r.Logger.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
-	if err := r.DB.Where("user_email = ?", authUser.Email).Delete(models.Token{}).Error; err != nil {
+	if err := r.DB.Where("id = ?", authUser.ID).Delete(models.Token{}).Error; err != nil {
 		r.Logger.Error().Err(err).Msg("Could not delete all the tokens from the database")
 		return nil, errInternalServer
 	}
@@ -379,13 +378,12 @@ func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
 
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
-		r.Logger.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
 	return &model.User{
-		Name:  authUser.Name,
-		Email: authUser.Email,
+		Name: authUser.Name,
 	}, nil
 }
 
@@ -394,7 +392,7 @@ func (r *queryResolver) GetSessions(ctx context.Context) ([]string, error) {
 
 	authUser := middleware.GetUserFromContext(ctx)
 	if authUser == nil {
-		r.Logger.Debug().Str("Email", authUser.Email).Msg("Invalid Token")
+		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 

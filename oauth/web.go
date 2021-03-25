@@ -1,4 +1,4 @@
-package routes
+package oauth
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 
 // WebOAuthHandler is a REST route that is called when the oauth provider redirects to here and provides the code
 func (o *Router) WebOAuthHandler(w http.ResponseWriter, r *http.Request) {
-	redirect, token, err := Handler(w, r, o.DB, o.Logger, "web")
+	redirect, token, err := o.Handler(w, r, "web")
 	if err != nil {
 		log.Print(err)
 		fmt.Fprint(w, err)

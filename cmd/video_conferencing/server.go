@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/handlers"
 
 	"github.com/samyak-jain/agora_backend/migrations"
+	"github.com/samyak-jain/agora_backend/oauth"
 	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/middleware"
 	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
 
@@ -18,7 +19,6 @@ import (
 
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/hlog"
-	"github.com/samyak-jain/agora_backend/routes"
 
 	"github.com/samyak-jain/agora_backend/utils"
 
@@ -67,7 +67,7 @@ func main() {
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
-	requestHandler := routes.Router{
+	requestHandler := oauth.Router{
 		DB:     database,
 		Logger: logger,
 	}

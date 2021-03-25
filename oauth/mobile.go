@@ -1,4 +1,4 @@
-package routes
+package oauth
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 // MobileOAuthHandler is a REST route that is called when the oauth provider redirects to here and provides the code
 func (o *Router) MobileOAuthHandler(w http.ResponseWriter, r *http.Request) {
-	_, token, err := Handler(w, r, o.DB, o.Logger, "mobile")
+	_, token, err := o.Handler(w, r, "mobile")
 	if err != nil {
 		fmt.Fprint(w, "Internal Server Error")
 		return
