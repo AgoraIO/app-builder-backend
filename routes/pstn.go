@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"text/template"
 	"strings"
+	"text/template"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/samyak-jain/agora_backend/models"
+	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
 	"github.com/samyak-jain/agora_backend/utils"
 )
 

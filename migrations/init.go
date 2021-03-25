@@ -1,16 +1,20 @@
 package migrations
 
 import (
+	"flag"
+	"log"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/samyak-jain/agora_backend/utils"
-	"log"
+	"github.com/spf13/viper"
 )
 
 // RunMigration runs the schema migrations
 func RunMigration() {
-	utils.SetupConfig()
+	configDir := flag.String("config", ".", "Directory which contains the config.json")
+	utils.SetupConfig(configDir)
 	//db, err := models.CreateDB(utils.GetDBURL())
 	//if err != nil {
 	//	log.Print(err)
@@ -22,7 +26,7 @@ func RunMigration() {
 	//db.AutoMigrate(&models.User{}, &models.Channel{}, &models.Token{})
 	m, err := migrate.New(
 		"file://migrations/",
-		utils.GetDBURL())
+		viper.GetString("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}

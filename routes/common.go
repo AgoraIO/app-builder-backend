@@ -7,10 +7,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/rs/zerolog/log"
+	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
 	"github.com/samyak-jain/agora_backend/utils"
 
-	"github.com/samyak-jain/agora_backend/models"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -28,7 +27,8 @@ type GoogleOAuthUser struct {
 
 // Router refers to all the oauth endpoints
 type Router struct {
-	DB *models.Database
+	DB     *models.Database
+	Logger *utils.Logger
 }
 
 // TokenTemplate is a struct that will be used to template the token into the html that will be served for Desktop and Mobile
@@ -38,11 +38,11 @@ type TokenTemplate struct {
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
-func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platform string) (*string, *string, error) {
+func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, logger *utils.Logger, platform string) (*string, *string, error) {
 	err := r.ParseForm()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Error().Err(err).Msg("Could not parse form request")
+		logger.Error().Err(err).Msg("Could not parse form request")
 		return nil, nil, err
 	}
 
@@ -52,14 +52,14 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	decodedState, err := url.QueryUnescape(state)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Error().Err(err).Msg("Could not url decode state")
+		logger.Error().Err(err).Msg("Could not url decode state")
 		return nil, nil, err
 	}
 
 	parsedState, err := url.ParseQuery(decodedState)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Msg("Could not parse deocoded state")
+		logger.Error().Err(err).Msg("Could not parse deocoded state")
 		return nil, nil, err
 	}
 
@@ -86,21 +86,21 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		userInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		log.Warn().Msg("Unknown state parameter passed")
+		logger.Warn().Msg("Unknown state parameter passed")
 		return nil, nil, nil
 	}
 
 	token, err := oauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("code", code).Msg("Could not exchange code for access token")
+		logger.Error().Err(err).Str("code", code).Msg("Could not exchange code for access token")
 		return nil, nil, err
 	}
 
 	response, err := http.Get(userInfoURL + token.AccessToken)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("code", code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
+		logger.Error().Err(err).Str("code", code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
 		return nil, nil, err
 	}
 	defer response.Body.Close()
@@ -108,7 +108,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Msg("Could not read response body")
+		logger.Error().Err(err).Msg("Could not read response body")
 		return nil, nil, err
 	}
 
@@ -116,22 +116,24 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	err = json.Unmarshal(contents, &user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
+		logger.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
 		return nil, nil, err
 	}
 
 	if !user.VerifiedEmail {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Error().Err(err).Str("email", user.Email).Msg("Email is not verified")
+		logger.Error().Err(err).Str("email", user.Email).Msg("Email is not verified")
 		return nil, nil, errors.New("Email is not verified")
 	}
 
 	bearerToken, err := utils.GenerateUUID()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Msg("Could not generate bearer token")
+		logger.Error().Err(err).Msg("Could not generate bearer token")
 		return nil, nil, err
 	}
+
+	logger.Info().Str("token", bearerToken)
 
 	var userData models.User
 	if db.Where("email = ?", user.Email).First(&userData).RecordNotFound() {
