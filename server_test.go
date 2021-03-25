@@ -12,8 +12,25 @@ import (
 	"github.com/samyak-jain/agora_backend/routes"
 	"github.com/samyak-jain/agora_backend/utils"
 	"github.com/stretchr/testify/suite"
+	"math/rand"
 	"testing"
+	"time"
 )
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func randomString() string {
+	b := make([]byte, rand.Intn(20))
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+func randomBool() bool {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(2) == 1
+}
 
 type GraphQLTestSuite struct {
 	suite.Suite
@@ -109,10 +126,10 @@ func (suite *GraphQLTestSuite) WebOAuthHandler() {
 		GivenName   string
 		bearerToken string
 	}{
-		{email: "test@testing.com", GivenName: "Testing Acc", bearerToken: suite.Token},    // ideal case
-		{email: "test1@testing.com", GivenName: "Testing Acc 1", bearerToken: suite.Token}, //Same Bearer Token for both.
-		{email: "", GivenName: "Testing Acc 1", bearerToken: suite.Token},                  //Email nil.
-		{email: "test2@testing.com", GivenName: "", bearerToken: suite.Token},              //Name Nil.
+		{email: randomString() + "@testing.com", GivenName: randomString(), bearerToken: suite.Token}, // ideal case
+		{email: randomString() + "@testing.com", GivenName: randomString(), bearerToken: suite.Token}, //Same Bearer Token for both.
+		{email: "", GivenName: randomString(), bearerToken: suite.Token},                              //Email nil.
+		{email: randomString() + "@testing.com", GivenName: randomString(), bearerToken: suite.Token}, //Name Nil.
 	}
 	var user routes.GoogleOAuthUser
 	var tokenData models.Token
@@ -126,7 +143,7 @@ func (suite *GraphQLTestSuite) WebOAuthHandler() {
 }
 
 //CHANGE HERE
-func RoomCreationHandler(t *testing.T, bearerToken string, db *models.Database) CreateChannel {
+func RoomCreationHandler(t *testing.T, channel string, enablePSTN bool, db *models.Database) CreateChannel {
 	query := `mutation CreateChannel($title: String!, $enablePSTN: Boolean) {
 				createChannel(title: $title, enablePSTN: $enablePSTN) {
 					passphrase {
@@ -142,13 +159,6 @@ func RoomCreationHandler(t *testing.T, bearerToken string, db *models.Database) 
 					}
 				}
 			`
-
-	//
-	//database, err := models.CreateDB(utils.GetDBURL())
-	//t.Log(database)
-	//if err != nil {
-	//	t.Fatal("DB Connection Failed!")
-	//}
 	config := generated.Config{
 		Resolvers: &graph.Resolver{DB: db},
 	}
@@ -157,19 +167,36 @@ func RoomCreationHandler(t *testing.T, bearerToken string, db *models.Database) 
 
 	c.MustPost(query, &decodedResponse, func(bd *client.Request) {
 		bd.Variables = map[string]interface{}{
-			"title":      "Hey",
-			"enablePSTN": true,
+			"title":      channel,
+			"enablePSTN": enablePSTN,
 		}
 	})
 	var channelData models.Channel
-	assert.Equal(t, decodedResponse.CreateChannel.Title, "Hey") //change this
-	assert.Equal(t, db.Where("hostpassphrase = ?", decodedResponse.CreateChannel.Passphrase.Host).First(&channelData).RecordNotFound(), false)
+	tx := db.Where("hostpassphrase = ?", decodedResponse.CreateChannel.Passphrase.Host).First(&channelData)
+	assert.Equal(t, decodedResponse.CreateChannel.Title, channel)
+	assert.Equal(t, tx.RecordNotFound(), false)
+	if !enablePSTN {
+		assert.Equal(t, channelData.DTMF, nil)
+	} else {
+		assert.Equal(t, channelData.DTMF, decodedResponse.CreateChannel.Pstn.Dtmf)
+	}
 	return decodedResponse
 }
 
 func (suite *GraphQLTestSuite) RoomCreation() {
-	suite.createChannelDecoded = RoomCreationHandler(suite.T(), suite.Token+"wef", suite.DB) // Not Authorized
-	suite.createChannelDecoded = RoomCreationHandler(suite.T(), suite.Token, suite.DB)       // Working case.
+	for _, tc := range []struct {
+		title      string
+		enablePSTN bool
+	}{
+		{title: randomString(), enablePSTN: randomBool()},
+		{title: randomString(), enablePSTN: randomBool()},
+		{title: randomString(), enablePSTN: randomBool()},
+		{title: randomString(), enablePSTN: randomBool()},
+		{title: randomString(), enablePSTN: randomBool()},
+	} {
+		suite.createChannelDecoded = RoomCreationHandler(suite.T(), tc.title, tc.enablePSTN, suite.DB) // Not Authorized
+		suite.createChannelDecoded = RoomCreationHandler(suite.T(), tc.title, tc.enablePSTN, suite.DB) // Working case.
+	}
 }
 
 func (suite *GraphQLTestSuite) JoinRoom() {
@@ -185,12 +212,12 @@ func (suite *GraphQLTestSuite) JoinRoom() {
 		bearerToken    string
 		status         bool
 	}{
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host + "test", isHost: true, bearerToken: suite.Token},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View + "test", isHost: false, bearerToken: suite.Token},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: true, bearerToken: suite.Token + "wef"},
-		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: false, bearerToken: suite.Token + "ef"},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: randomBool(), bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: randomBool(), bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host + "test", isHost: randomBool(), bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View + "test", isHost: randomBool(), bearerToken: suite.Token},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.Host, isHost: randomBool(), bearerToken: suite.Token + "wef"},
+		{passPhrase: suite.createChannelDecoded.CreateChannel.Passphrase.View, isHost: randomBool(), bearerToken: suite.Token + "ef"},
 	} {
 		query := `query JoinChannel($passphrase: String!) {
 					joinChannel(passphrase: $passphrase) {
