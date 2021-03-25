@@ -9,6 +9,7 @@ require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/jinzhu/gorm v1.9.15
+	github.com/magiconair/properties v1.8.1
 	github.com/newrelic/go-agent v3.9.0+incompatible // indirect
 	github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/newrelic/go-agent/v3/integrations/nrgorilla v1.1.0
