@@ -36,6 +36,10 @@
             "description": "Name of your AWS S3 Bucket. Required for Cloud Recording.",
             "required": false
         },
+        "RECORDING_REGION": {
+            "description": "Region of your AWS S3 Bucket. Required for Cloud Recording.",
+            "required": false
+        },
         "BUCKET_ACCESS_KEY": {
             "description": "Enter your AWS Access key. Required for Cloud Recording.",
             "required": false

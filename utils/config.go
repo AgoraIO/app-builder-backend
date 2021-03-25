@@ -29,6 +29,12 @@ func SetupConfig(configDir *string) error {
 		return fmt.Errorf("Fatal error config file: %s", err)
 	}
 
+	viper.SetDefault("RECORDING_VENDOR", 1)
+	viper.SetDefault("RECORDING_REGION", 0)
+	if viper.GetString("ENABLE_OAUTH") == "false" {
+		viper.Set("ENABLE_OAUTH", false)
+	}
+
 	viper.AutomaticEnv()
 	return CheckRequired()
 }
