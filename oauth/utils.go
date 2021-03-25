@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 
 	"github.com/coreos/go-oidc"
 	"github.com/rs/zerolog/log"
@@ -74,7 +75,17 @@ func GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc
 		if oauthDetails.OAuthSite == "slack" {
 			// Adding this since Slack does not publicly publish it's .well-known discovery URL.
 			// So we will have to manually hard code the UserInfo URL until we find that URL
-			userInfoURL := "https://slack.com/api/users.info"
+			userInfoURL := "https://slack.com/api/users.profile.get"
+
+			type authedSlackUser struct {
+				ID string
+			}
+
+			authedUser, ok := token.Extra("authed_user").(authedSlackUser)
+			if !ok {
+				log.Error().Str("OAuth Details", oauthDetails.Code).Interface("OAuth Exchange", token).Msg("No UserID in Slack OAuth Response")
+				return nil, errors.New("No UserID in Slack OAuth Response")
+			}
 
 			response, err := http.Get(userInfoURL + token.AccessToken)
 			if err != nil {
@@ -89,14 +100,30 @@ func GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc
 				return nil, err
 			}
 
-			var user User
+			type SlackUser struct {
+				Name  string `json:"display_name_normalized"`
+				Email string
+			}
+
+			type SlackResponse struct {
+				Ok      bool
+				Profile *SlackUser `json:"profile,omitempty"`
+				Error   string     `json:"error,omitempty"`
+			}
+
+			var user SlackResponse
 			err = json.Unmarshal(contents, &user)
 			if err != nil {
 				log.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
 				return nil, err
 			}
 
-			return &user, nil
+			if user.Error != "" {
+				log.Error().Str("Error", user.Error).Str("id", authedUser.ID).Str("body", string(contents)).Msg("Could not fetch Userinfo for slack")
+				return nil, errors.New(user.Error)
+			}
+
+			return &User{ID: authedUser.ID, Name: user.Profile.Name, Email: user.Profile.Email, EmailVerified: true}, nil
 		}
 
 		log.Error().Interface("OAuth Config", oauthConfig).Interface("OAuth Details", oauthDetails).Msg("Provider should not be nil")
@@ -116,7 +143,16 @@ func GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc
 			return nil, errors.New("Could not verify id_token")
 		}
 
-		return &User{ID: idToken.Subject, EmailVerified: true}, nil
+		// Get Email from idToken
+		var claims struct {
+			Email string `json:"email"`
+		}
+
+		if err := idToken.Claims(&claims); err != nil {
+			return &User{ID: idToken.Subject, EmailVerified: true}, nil
+		}
+
+		return &User{ID: idToken.Subject, Email: claims.Email, EmailVerified: true}, nil
 
 	}
 
@@ -130,6 +166,26 @@ func GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc
 	return &User{
 		ID:            userInfo.Subject,
 		Name:          userInfo.Profile,
+		Email:         userInfo.Email,
 		EmailVerified: userInfo.EmailVerified,
 	}, nil
+}
+
+// AllowListValidator takes an email and searches the Allow List for a match
+func AllowListValidator(email string) (bool, error) {
+	for _, value := range viper.GetStringSlice("ALLOW_LIST") {
+		match, err := regexp.MatchString(value, email)
+		if err != nil {
+			log.Error().Err(err).Str("Pattern", value).Str("Email", email).Msg("Could not match wildcard")
+			return false, err
+		}
+
+		if match {
+			log.Info().Str("Email", email).Str("Match", value).Msg("Allow list email matched")
+			return true, nil
+		}
+	}
+
+	log.Info().Str("Email", email).Msg("No match found for email in Allow List")
+	return false, nil
 }

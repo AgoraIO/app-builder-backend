@@ -15,7 +15,8 @@ import (
 type User struct {
 	ID            string
 	Name          string `json:"given_name"`
-	EmailVerified bool   `json:"verified_email"`
+	Email         string
+	EmailVerified bool `json:"verified_email"`
 }
 
 // Router refers to all the oauth endpoints
@@ -123,6 +124,19 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 		return nil, nil, err
 	}
 
+	ok, err := AllowListValidator(userInfo.Email)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Error().Err(err).Str("email", userInfo.Email).Str("Sub", userInfo.ID).Interface("OAuth Details", oauthDetails).Interface("OAuth Config", oauthConfig).Msg("Email cannot be validated in Allow List")
+		return nil, nil, err
+	}
+
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Error().Str("Email", userInfo.Email).Msg("Email not found in Allow List")
+		return nil, nil, errors.New("Email not found in Allow List")
+	}
+
 	if !userInfo.EmailVerified {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Error().Str("Sub", userInfo.ID).Interface("OAuth Details", oauthDetails).Interface("OAuth Config", oauthConfig).Msg("Email is not verified")
@@ -139,6 +153,8 @@ func Handler(w http.ResponseWriter, r *http.Request, db *models.Database, platfo
 	var userData models.User
 	if db.Where("id = ?", userInfo.ID).First(&userData).RecordNotFound() {
 		db.Create(&models.User{
+			ID:   userInfo.ID,
+			Name: userInfo.Name,
 			Tokens: []models.Token{{
 				TokenID: bearerToken,
 			}},

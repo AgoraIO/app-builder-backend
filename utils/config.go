@@ -2,6 +2,8 @@ package utils
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -28,6 +30,8 @@ func SetupConfig() {
 	if viper.GetString("ENABLE_OAUTH") == "false" {
 		viper.Set("ENABLE_OAUTH", false)
 	}
+
+	viper.SetDefault("ALLOW_LIST", []string{"*"})
 }
 
 // GetPORT fetches the PORT
@@ -60,4 +64,22 @@ func GetAllowedOrigin() string {
 	}
 
 	return "*"
+}
+
+// Converts a wildcard string to RegExp Pattern
+// Taken from https://stackoverflow.com/a/64520572/4127046
+func wildCardToRegexp(pattern string) string {
+	var result strings.Builder
+	for i, literal := range strings.Split(pattern, "*") {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString(".*")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return result.String()
 }
