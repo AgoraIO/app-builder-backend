@@ -35,7 +35,6 @@ func AuthHandler(db *models.Database, logger *utils.Logger) func(http.Handler) h
 
 			if header == "" {
 				logger.Debug().Msg("No Token Provided")
-				next.ServeHTTP(w, r)
 			} else {
 				splitToken := strings.Split(header, "Bearer ")
 				token := splitToken[1]
@@ -53,9 +52,11 @@ func AuthHandler(db *models.Database, logger *utils.Logger) func(http.Handler) h
 					logger.Info().Str("token", token)
 					ctx := context.WithValue(r.Context(), userContextKey, &user)
 					next.ServeHTTP(w, r.WithContext(ctx))
+					return
 				}
-
 			}
+
+			next.ServeHTTP(w, r)
 		})
 	}
 }
