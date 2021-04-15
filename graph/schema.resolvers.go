@@ -168,11 +168,11 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		return "", errInternalServer
 	}
 
-	if err := r.DB.Model(&channelData).Update("Recording", &models.Recording{
-		UID: recorder.UID,
-		SID: recorder.SID,
-		RID: recorder.RID,
-	}).Error; err != nil {
+	recordMap := make(map[string]interface{})
+	recordMap["UID"] = recorder.UID
+	recordMap["RID"] = recorder.RID
+	recordMap["SID"] = recorder.SID
+	if err := r.DB.Model(&channelData).Update(recordMap).Error; err != nil {
 		log.Error().Err(err).Msg("Updating database for recording failed")
 		return "", errInternalServer
 	}
@@ -204,10 +204,7 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 		return "", errors.New("Unauthorised to record channel")
 	}
 
-	var record models.Recording
-	r.DB.Model(&channelData).Related(&record)
-
-	err := utils.Stop(channelData.Name, record.UID, record.RID, record.SID)
+	err := utils.Stop(channelData.Name, channelData.UID, channelData.RID, channelData.SID)
 	if err != nil {
 		log.Error().Err(err).Msg("Stop recording failed")
 		return "", errInternalServer
