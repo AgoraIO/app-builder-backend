@@ -35,7 +35,6 @@ func AuthHandler(db *models.Database) negroni.HandlerFunc {
 
 		if header == "" {
 			log.Debug().Msg("No Token Provided")
-			next.ServeHTTP(w, r)
 		} else {
 			splitToken := strings.Split(header, "Bearer ")
 			token := splitToken[1]
@@ -44,17 +43,17 @@ func AuthHandler(db *models.Database) negroni.HandlerFunc {
 			var user models.User
 
 			if db.Where("token_id = ?", token).First(&tokenData).RecordNotFound() {
-				w.WriteHeader(http.StatusUnauthorized)
 				log.Debug().Str("token", token).Msg("Passed Invalid token")
 			} else if err := db.Where("email = ?", tokenData.UserEmail).First(&user).Error; err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
 				log.Error().Str("email", tokenData.UserEmail).Str("token", token).Msg("Email does not exist for the provided token")
 			} else {
 				ctx := context.WithValue(r.Context(), userContextKey, &user)
 				next.ServeHTTP(w, r.WithContext(ctx))
+				return
 			}
 
 		}
+		next.ServeHTTP(w, r)
 	})
 }
 
