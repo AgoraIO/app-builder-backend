@@ -32,7 +32,7 @@ func GetRtmToken(user string) (string, error) {
 
 // GenerateUserCredentials generates uid, rtc and rtc token
 func GenerateUserCredentials(channel string, rtm bool) (*model.UserCredentials, error) {
-	uid := int(rand.Uint32())
+	uid := int(rand.Int31())
 	rtcToken, err := GetRtcToken(channel, uid)
 	if err != nil {
 		return nil, err

@@ -107,6 +107,8 @@ func (rec *Recorder) Acquire() error {
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
 
+	log.Info().Interface("response", result).Msg("Acquire Cloud Recording Response")
+
 	rec.RID = result["resourceId"]
 
 	return nil
@@ -188,6 +190,9 @@ func (rec *Recorder) Start(secret *string) error {
 
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
+
+	log.Info().Interface("response", result).Msg("Cloud Recording Response")
+
 	rec.SID = result["sid"]
 
 	return nil
@@ -220,8 +225,6 @@ func Stop(channel string, uid int, rid string, sid string) error {
 
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
-
-	log.Info().Interface("response", result).Msg("Cloud Recording Response")
 
 	return nil
 }
