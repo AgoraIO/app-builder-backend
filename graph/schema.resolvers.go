@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -165,16 +166,23 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		title = authUser.Name
 	}
 
+	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		log.Error().Err(err).Msg("Regex Compilation failed")
+	}
+
+	finalTitle := utils.FirstN(reg.ReplaceAllString(title, ""), 100)
+
 	recorder := &utils.Recorder{}
 	recorder.Channel = channelData.Name
 
-	err := recorder.Acquire()
+	err = recorder.Acquire()
 	if err != nil {
 		log.Error().Err(err).Msg("Acquire Failed")
 		return "", errInternalServer
 	}
 
-	err = recorder.Start(title, secret)
+	err = recorder.Start(finalTitle, secret)
 	if err != nil {
 		log.Error().Err(err).Msg("Start Failed")
 		return "", errInternalServer
