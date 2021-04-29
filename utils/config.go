@@ -12,6 +12,22 @@ type AgoraConfig struct {
 	AppCertificate string
 }
 
+// SetDefaults sets the default for configuration
+func SetDefaults() {
+	viper.SetDefault("LOG_DIR", "./logs")
+	viper.SetDefault("PORT", "8080")
+	viper.SetDefault("MIGRATION_SOURCE", "file://db/migrations") // Will be used in the future
+	viper.SetDefault("ALLOWED_ORIGIN", "*")
+	viper.SetDefault("ENABLE_OAUTH", true)
+	viper.SetDefault("ENABLE_CONSOLE_LOGGINIG", true)
+	viper.SetDefault("ENABLE_FILE_LOGGING", true)
+	viper.SetDefault("LOG_LEVEL", "DEBUG")
+
+	if viper.GetString("ALLOWED_ORIGIN") == "" {
+		viper.Set("ALLOWED_ORIGIN", "*")
+	}
+}
+
 // SetupConfig configures the boilerplate for viper
 func SetupConfig() {
 	viper.SetConfigName("config.json")
@@ -28,6 +44,8 @@ func SetupConfig() {
 	if viper.GetString("ENABLE_OAUTH") == "false" {
 		viper.Set("ENABLE_OAUTH", false)
 	}
+
+	SetDefaults()
 }
 
 // GetPORT fetches the PORT
