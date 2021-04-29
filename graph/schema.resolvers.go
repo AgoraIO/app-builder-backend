@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/samyak-jain/agora_backend/graph/generated"
@@ -181,6 +182,13 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		title = authUser.Name
 	}
 
+	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		log.Error().Err(err).Msg("Regex Compilation failed")
+	}
+
+	finalTitle := utils.FirstN(reg.ReplaceAllString(title, ""), 100)
+
 	recorder := &utils.Recorder{}
 	recorder.Channel = channelData.ChannelName
 
@@ -190,7 +198,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		return "", errInternalServer
 	}
 
-	err = recorder.Start(title, secret)
+	err = recorder.Start(finalTitle, secret)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Start Failed")
 		return "", errInternalServer
