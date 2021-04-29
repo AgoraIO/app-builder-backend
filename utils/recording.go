@@ -115,8 +115,15 @@ func (rec *Recorder) Acquire() error {
 }
 
 // Start starts the recording
-func (rec *Recorder) Start(secret *string) error {
-	currentTime := strconv.FormatInt(time.Now().Unix(), 10)
+func (rec *Recorder) Start(channelTitle string, secret *string) error {
+	// currentTime := strconv.FormatInt(time.Now().Unix(), 10)
+	location, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		return err
+	}
+	currentTimeStamp := time.Now().In(location)
+	currentDate := currentTimeStamp.Format("20060102")
+	currentTime := currentTimeStamp.Format("150405")
 
 	transcodingConfig := TranscodingConfig{
 		Height:           720,
@@ -158,7 +165,7 @@ func (rec *Recorder) Start(secret *string) error {
 				AccessKey: viper.GetString("BUCKET_ACCESS_KEY"),
 				SecretKey: viper.GetString("BUCKET_ACCESS_SECRET"),
 				FileNamePrefix: []string{
-					rec.Channel, currentTime,
+					channelTitle, currentDate, currentTime,
 				},
 			},
 			RecordingConfig: recordingConfig,
@@ -225,6 +232,8 @@ func Stop(channel string, uid int, rid string, sid string) error {
 
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
+
+	log.Info().Interface("response", result).Msg("Stop Cloud Recording Response")
 
 	return nil
 }

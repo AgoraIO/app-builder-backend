@@ -133,6 +133,11 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	var channelData models.Channel
 	var host bool
 
+	var authUser *models.User
+	if viper.GetBool("ENABLE_OAUTH") {
+		authUser = middleware.GetUserFromContext(ctx)
+	}
+
 	if passphrase == "" {
 		return "", errors.New("Passphrase cannot be empty")
 	}
@@ -153,6 +158,13 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		return "", errors.New("Unauthorised to record channel")
 	}
 
+	var title string
+	if authUser == nil {
+		title = channelData.Title
+	} else {
+		title = authUser.Name
+	}
+
 	recorder := &utils.Recorder{}
 	recorder.Channel = channelData.Name
 
@@ -162,7 +174,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		return "", errInternalServer
 	}
 
-	err = recorder.Start(secret)
+	err = recorder.Start(title, secret)
 	if err != nil {
 		log.Error().Err(err).Msg("Start Failed")
 		return "", errInternalServer
