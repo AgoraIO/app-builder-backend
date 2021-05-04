@@ -58,10 +58,15 @@ type StorageConfig struct {
 	FileNamePrefix []string `json:"fileNamePrefix"`
 }
 
+type RecordingFileConfig struct {
+	AVFileType []string `json:"avFileType"`
+}
+
 type ClientRequest struct {
-	Token           string          `json:"token"`
-	RecordingConfig RecordingConfig `json:"recordingConfig"`
-	StorageConfig   StorageConfig   `json:"storageConfig"`
+	Token               string              `json:"token"`
+	RecordingConfig     RecordingConfig     `json:"recordingConfig"`
+	RecordingFileConfig RecordingFileConfig `json:"recordingFileConfig"`
+	StorageConfig       StorageConfig       `json:"storageConfig"`
 }
 
 type StartRecordRequest struct {
@@ -167,6 +172,9 @@ func (rec *Recorder) Start(channelTitle string, secret *string) error {
 				FileNamePrefix: []string{
 					channelTitle, currentDate, currentTime,
 				},
+			},
+			RecordingFileConfig: RecordingFileConfig{
+				AVFileType: []string{"hls", "mp4"},
 			},
 			RecordingConfig: recordingConfig,
 		},
