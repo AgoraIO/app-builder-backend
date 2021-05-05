@@ -12,18 +12,12 @@ import (
 )
 
 // RunMigration runs the schema migrations
-func RunMigration() {
-	configDir := flag.String("config", ".", "Directory which contains the config.json")
-	utils.SetupConfig(configDir)
-	//db, err := models.CreateDB(utils.GetDBURL())
-	//if err != nil {
-	//	log.Print(err)
-	//	return
-	//}
-	//
-	//defer db.Close()
+func RunMigration(config *string) {
+	if config == nil {
+		configDir := flag.String("config", ".", "Directory which contains the config.json")
+		utils.SetupConfig(configDir)
+	}
 
-	//db.AutoMigrate(&models.User{}, &models.Channel{}, &models.Token{})
 	m, err := migrate.New(
 		"file://migrations/",
 		viper.GetString("DATABASE_URL"))

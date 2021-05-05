@@ -54,7 +54,7 @@ func main() {
 	defer database.Close()
 
 	if viper.GetBool("RUN_MIGRATION") {
-		migrations.RunMigration()
+		migrations.RunMigration(configDir)
 	}
 
 	router := mux.NewRouter()
