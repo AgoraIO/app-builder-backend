@@ -21,15 +21,15 @@ var errInternalServer error = errors.New("Internal Server Error")
 var errBadRequest error = errors.New("Bad Request")
 
 func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error) {
-	r.Logger.Info().Str("mutation", "CreateChannel").Str("title", title).Msg("")
+	r.Logger.Info().Str("mutation", "CreateChannel").Str("title", title).Msg("Creating Channel")
 	if enablePstn != nil {
 		r.Logger.Info().Bool("enablePstn", *enablePstn).Msg("")
 	}
 
 	if viper.GetBool("ENABLE_OAUTH") {
-		authUser := middleware.GetUserFromContext(ctx)
-		if authUser == nil {
-			r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
+		_, err := middleware.GetUserFromContext(ctx)
+		if err != nil {
+			r.Logger.Debug().Msg("Invalid Token")
 			return nil, errors.New("Invalid Token")
 		}
 	}
@@ -77,8 +77,8 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 
 		newChannel = &models.Channel{
 			Title:            title,
-			Name:             channel,
-			Secret:           secret,
+			ChannelName:      channel,
+			ChannelSecret:    secret,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 			DTMF:             *dtmfResult,
@@ -88,8 +88,8 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		pstnResponse = nil
 		newChannel = &models.Channel{
 			Title:            title,
-			Name:             channel,
-			Secret:           secret,
+			ChannelName:      channel,
+			ChannelSecret:    secret,
 			HostPassphrase:   hostPhrase,
 			ViewerPassphrase: viewPhrase,
 		}
@@ -118,13 +118,13 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 		return nil, nil
 	}
 
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
+	authUser, err := middleware.GetUserFromContext(ctx)
+	if err != nil {
+		r.Logger.Debug().Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
-	user := &models.User{ID: authUser.ID}
+	user := &models.User{Identifier: authUser.Identifier}
 	if err := r.DB.Model(&user).Update("name", name).Error; err != nil {
 		r.Logger.Error().Err(err).Msg("Username update failed")
 		return nil, errInternalServer
@@ -160,12 +160,12 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	}
 
 	if !host {
-		r.Logger.Debug().Str("passphrase", passphrase).Str("channel", channelData.Name).Msg("Unauthorized to record channel")
+		r.Logger.Debug().Str("passphrase", passphrase).Str("channel", channelData.ChannelName).Msg("Unauthorized to record channel")
 		return "", errors.New("Unauthorised to record channel")
 	}
 
 	recorder := &utils.Recorder{}
-	recorder.Channel = channelData.Name
+	recorder.Channel = channelData.ChannelName
 
 	err := recorder.Acquire()
 	if err != nil {
@@ -212,11 +212,11 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 	}
 
 	if !host {
-		r.Logger.Debug().Str("passphrase", passphrase).Str("channel", channelData.Name).Msg("Unauthorized to record channel")
+		r.Logger.Debug().Str("passphrase", passphrase).Str("channel", channelData.ChannelName).Msg("Unauthorized to record channel")
 		return "", errors.New("Unauthorised to record channel")
 	}
 
-	err := utils.Stop(channelData.Name, channelData.UID, channelData.RID, channelData.SID)
+	err := utils.Stop(channelData.ChannelName, channelData.RecordingUID, channelData.RecordingRID, channelData.RecordingSID)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Stop recording failed")
 		return "", errInternalServer
@@ -228,9 +228,9 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]string, error) {
 	r.Logger.Info().Str("mutation", "LogoutSession").Str("token", token).Msg("")
 
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
+	authUser, err := middleware.GetUserFromContext(ctx)
+	if err != nil {
+		r.Logger.Debug().Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
@@ -248,7 +248,7 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 	}
 
 	if tokenIndex == -1 {
-		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Token does not exist")
+		r.Logger.Debug().Str("Sub", authUser.Identifier).Msg("Token does not exist")
 		return nil, errBadRequest
 	}
 
@@ -263,13 +263,13 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 func (r *mutationResolver) LogoutAllSessions(ctx context.Context) (*string, error) {
 	r.Logger.Info().Str("mutation", "LogoutAllSessions").Msg("")
 
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
+	authUser, err := middleware.GetUserFromContext(ctx)
+	if err != nil {
+		r.Logger.Debug().Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
-	if err := r.DB.Where("id = ?", authUser.ID).Delete(models.Token{}).Error; err != nil {
+	if err := r.DB.Where("identifier = ?", authUser.ID).Delete(models.Token{}).Error; err != nil {
 		r.Logger.Error().Err(err).Msg("Could not delete all the tokens from the database")
 		return nil, errInternalServer
 	}
@@ -298,13 +298,13 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		host = true
 	}
 
-	mainUser, err := utils.GenerateUserCredentials(channelData.Name, true)
+	mainUser, err := utils.GenerateUserCredentials(channelData.ChannelName, true)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Could not generate main user credentials")
 		return nil, errInternalServer
 	}
 
-	screenShare, err := utils.GenerateUserCredentials(channelData.Name, false)
+	screenShare, err := utils.GenerateUserCredentials(channelData.ChannelName, false)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Could not generate screenshare user credentails")
 		return nil, errInternalServer
@@ -312,11 +312,11 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 
 	return &model.Session{
 		Title:       channelData.Title,
-		Channel:     channelData.Name,
+		Channel:     channelData.ChannelName,
 		IsHost:      host,
 		MainUser:    mainUser,
 		ScreenShare: screenShare,
-		Secret:      channelData.Secret,
+		Secret:      channelData.ChannelSecret,
 	}, nil
 }
 
@@ -363,7 +363,7 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 			Host: hostPassphrase,
 			View: channelData.ViewerPassphrase,
 		},
-		Channel: channelData.Name,
+		Channel: channelData.ChannelName,
 		Title:   channelData.Title,
 		Pstn:    pstnResult,
 	}, nil
@@ -376,23 +376,23 @@ func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
 		return nil, nil
 	}
 
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
+	authUser, err := middleware.GetUserFromContext(ctx)
+	if err != nil {
+		r.Logger.Debug().Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 
 	return &model.User{
-		Name: authUser.Name,
+		Name: authUser.UserName,
 	}, nil
 }
 
 func (r *queryResolver) GetSessions(ctx context.Context) ([]string, error) {
 	r.Logger.Info().Str("query", "GetSessions").Msg("")
 
-	authUser := middleware.GetUserFromContext(ctx)
-	if authUser == nil {
-		r.Logger.Debug().Str("Sub", authUser.ID).Msg("Invalid Token")
+	authUser, err := middleware.GetUserFromContext(ctx)
+	if err != nil {
+		r.Logger.Debug().Msg("Invalid Token")
 		return nil, errors.New("Invalid Token")
 	}
 

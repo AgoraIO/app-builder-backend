@@ -14,18 +14,19 @@ import (
 // RunMigration runs the schema migrations
 func RunMigration(config *string) {
 	if config == nil {
-		configDir := flag.String("config", ".", "Directory which contains the config.json")
+		configDir := flag.String("config", "..", "Directory which contains the config.json")
 		utils.SetupConfig(configDir)
 	}
 
+	println("Running Migrations...")
 	m, err := migrate.New(
-		"file://migrations/",
+		"file://migrations/migrations",
 		viper.GetString("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	if err := m.Up(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	// Uncomment the below lines for migrate down!
 	//if err := m.Down(); err != nil {

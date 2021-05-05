@@ -8,13 +8,12 @@ import (
 type Channel struct {
 	gorm.Model
 	Title            string
-	Name             string
-	Secret           string
+	ChannelName      string
+	ChannelSecret    string
 	HostPassphrase   string
 	ViewerPassphrase string
 	DTMF             string
-	UID              int
-	SID              string
-	RID              string
-	Hosts            User
+	RecordingUID     int
+	RecordingSID     string
+	RecordingRID     string
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -35,6 +36,12 @@ const defaultPort = "8080"
 
 func main() {
 	configDir := flag.String("config", ".", "Directory which contains the config.json")
+	if configDir != nil {
+		println("Config Path", *configDir)
+	} else {
+		println(fmt.Errorf("Config Dir is nil"))
+	}
+
 	utils.SetupConfig(configDir)
 	logger := utils.Configure(utils.Config{
 		ConsoleLoggingEnabled: viper.GetBool("ENABLE_CONSOLE_LOGGING"),

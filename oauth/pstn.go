@@ -39,7 +39,7 @@ func (o *Router) DTMFHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uid := int(rand.Uint32())
-	tokenData, err := utils.GetRtcToken(channelData.Name, uid)
+	tokenData, err := utils.GetRtcToken(channelData.ChannelName, uid)
 	if err != nil {
 		log.Error().Err(err).Msg("token generation failed")
 	}
@@ -59,7 +59,7 @@ func (o *Router) DTMFHandler(w http.ResponseWriter, r *http.Request) {
 	}`
 
 	finalResult := strings.Replace(responseString, "{{AppID}}", viper.GetString("APP_ID"), 1)
-	finalResult = strings.Replace(finalResult, "{{Channel}}", channelData.Name, 1)
+	finalResult = strings.Replace(finalResult, "{{Channel}}", channelData.ChannelName, 1)
 	finalResult = strings.Replace(finalResult, "{{Token}}", tokenData, 1)
 	finalResult = strings.Replace(finalResult, "{{UID}}", fmt.Sprint(uid), 1)
 

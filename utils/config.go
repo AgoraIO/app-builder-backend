@@ -3,8 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -25,6 +23,18 @@ func SetDefaults() {
 	viper.SetDefault("ENABLE_CONSOLE_LOGGINIG", true)
 	viper.SetDefault("ENABLE_FILE_LOGGING", true)
 	viper.SetDefault("LOG_LEVEL", "DEBUG")
+	viper.SetDefault("ALLOW_LIST", []string{"*"})
+	viper.SetDefault("RECORDING_VENDOR", 1)
+	viper.SetDefault("RECORDING_REGION", 0)
+	viper.SetDefault("RUN_MIGRATION", false)
+
+	if viper.GetString("RUN_MIGRATION") == "true" {
+		viper.SetDefault("RUN_MIGRATION", true)
+	}
+
+	if viper.GetString("ENABLE_OAUTH") == "false" {
+		viper.Set("ENABLE_OAUTH", false)
+	}
 
 	if viper.GetString("ALLOWED_ORIGIN") == "" {
 		viper.Set("ALLOWED_ORIGIN", "*")
@@ -47,17 +57,10 @@ func SetupConfig(configDir *string) error {
 		return fmt.Errorf("Fatal error config file: %s", err)
 	}
 
-	viper.SetDefault("RECORDING_VENDOR", 1)
-	viper.SetDefault("RECORDING_REGION", 0)
-	if viper.GetString("ENABLE_OAUTH") == "false" {
-		viper.Set("ENABLE_OAUTH", false)
-	}
-
-	viper.SetDefault("ALLOW_LIST", []string{"*"})
-
 	viper.AutomaticEnv()
 
 	SetDefaults()
+
 	return CheckRequired()
 }
 
@@ -68,22 +71,4 @@ func CheckRequired() error {
 	}
 
 	return nil
-}
-
-// Converts a wildcard string to RegExp Pattern
-// Taken from https://stackoverflow.com/a/64520572/4127046
-func wildCardToRegexp(pattern string) string {
-	var result strings.Builder
-	for i, literal := range strings.Split(pattern, "*") {
-
-		// Replace * with .*
-		if i > 0 {
-			result.WriteString(".*")
-		}
-
-		// Quote any regular expression meta characters in the
-		// literal text.
-		result.WriteString(regexp.QuoteMeta(literal))
-	}
-	return result.String()
 }

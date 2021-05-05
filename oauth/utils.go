@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/coreos/go-oidc"
 	"github.com/spf13/viper"
@@ -173,7 +174,11 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 // AllowListValidator takes an email and searches the Allow List for a match
 func (r *Router) AllowListValidator(email string) (bool, error) {
 	for _, value := range viper.GetStringSlice("ALLOW_LIST") {
-		match, err := regexp.MatchString(value, email)
+
+		pattern := wildCardToRegexp(value)
+		r.Logger.Debug().Str("Allow List Pattern", value).Str("Email", email).Str("Regex Pattern", pattern).Msg("Allow List Debug Information")
+
+		match, err := regexp.MatchString(pattern, email)
 		if err != nil {
 			r.Logger.Error().Err(err).Str("Pattern", value).Str("Email", email).Msg("Could not match wildcard")
 			return false, err
@@ -187,4 +192,22 @@ func (r *Router) AllowListValidator(email string) (bool, error) {
 
 	r.Logger.Info().Str("Email", email).Msg("No match found for email in Allow List")
 	return false, nil
+}
+
+// Converts a wildcard string to RegExp Pattern
+// Taken from https://stackoverflow.com/a/64520572/4127046
+func wildCardToRegexp(pattern string) string {
+	var result strings.Builder
+	for i, literal := range strings.Split(pattern, "*") {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString(".*")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return result.String()
 }

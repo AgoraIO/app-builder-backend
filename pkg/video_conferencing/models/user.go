@@ -7,16 +7,17 @@ import (
 // User model contains all relevant details of a particular user
 type User struct {
 	gorm.Model
-	Name   string
-	ID     string  `gorm:"primary_key"`
-	Tokens []Token `gorm:"foreignkey:UserEmail;association_foreignkey:Email"`
+	UserName   string
+	Email      string
+	Identifier string  `gorm:"column:identifier"`
+	Tokens     []Token `gorm:"foreignkey:UserID;association_foreignkey:ID"`
 }
 
 // Token stores the token of a user
 type Token struct {
 	gorm.Model
-	TokenID   string
-	UserEmail string
+	TokenID string
+	UserID  string
 }
 
 // GetAllTokens fetches the token id of all the tokens of that user

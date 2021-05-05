@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -108,18 +109,21 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform s
 	}
 
 	oauthDetails, err := parseState(r)
+	router.Logger.Debug().Interface("OAuth Details", oauthDetails).Msg("OAuth Debug Information")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return nil, nil, err
 	}
 
 	oauthConfig, provider, err := router.GetOAuthConfig(oauthDetails.OAuthSite, oauthDetails.BackendURL+"/oauth/"+platform)
+	router.Logger.Debug().Interface("OAuth Config", oauthConfig).Interface("Provider", provider).Msg("OAuth Configuration Debug Information")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, nil, err
 	}
 
 	userInfo, err := router.GetUserInfo(*oauthConfig, *oauthDetails, provider)
+	router.Logger.Debug().Interface("User Info", userInfo).Msg("Debug User Information")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -151,10 +155,13 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform s
 	}
 
 	var userData models.User
-	if router.DB.Where("id = ?", userInfo.ID).First(&userData).RecordNotFound() {
+	userInfostr, err := json.Marshal(*userInfo)
+	println(err)
+	println("userinfo ", string(userInfostr))
+	if router.DB.Where("identifier = ?", userInfo.ID).First(&userData).RecordNotFound() {
 		router.DB.Create(&models.User{
-			ID:   userInfo.ID,
-			Name: userInfo.Name,
+			Identifier: userInfo.ID,
+			UserName:   userInfo.Name,
 			Tokens: []models.Token{{
 				TokenID: bearerToken,
 			}},
