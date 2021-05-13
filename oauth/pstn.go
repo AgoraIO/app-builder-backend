@@ -31,12 +31,12 @@ func (o *Router) PSTNConfig(w http.ResponseWriter, r *http.Request) {
 
 // DTMFHandler handles DTMF
 func (o *Router) DTMFHandler(w http.ResponseWriter, r *http.Request) {
-	dtmf := r.URL.Query().Get("id")
+	// dtmf := r.URL.Query().Get("id")
 
 	var channelData models.Channel
-	if err := o.DB.Where("DTMF = ?", dtmf).First(&channelData).Error; err != nil {
-		log.Error().Err(err).Str("DTMF", dtmf).Msg("DTMF not found")
-	}
+	// if err := o.DB.Where("DTMF = ?", dtmf).First(&channelData).Error; err != nil {
+	// 	log.Error().Err(err).Str("DTMF", dtmf).Msg("DTMF not found")
+	// }
 
 	uid := int(rand.Uint32())
 	tokenData, err := utils.GetRtcToken(channelData.ChannelName, uid)

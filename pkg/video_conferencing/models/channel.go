@@ -1,19 +1,17 @@
 package models
 
-import (
-	"github.com/jinzhu/gorm"
-)
+import "database/sql"
 
 // Channel Model contains all the details for a particular channel session
 type Channel struct {
-	gorm.Model
-	Title            string
-	ChannelName      string
-	ChannelSecret    string
-	HostPassphrase   string
-	ViewerPassphrase string
-	DTMF             string
-	RecordingUID     int
-	RecordingSID     string
-	RecordingRID     string
+	ID               int64          `db:"id"`
+	Title            string         `db:"title"`
+	ChannelName      string         `db:"name"`
+	ChannelSecret    sql.NullString `db:"secret"`
+	HostPassphrase   string         `db:"host"`
+	ViewerPassphrase sql.NullString `db:"view"`
+	DTMF             sql.NullString `db:"dtmf"`
+	RecordingUID     sql.NullInt32  `db:"uid"`
+	RecordingSID     sql.NullString `db:"sid"`
+	RecordingRID     sql.NullString `db:"rid"`
 }

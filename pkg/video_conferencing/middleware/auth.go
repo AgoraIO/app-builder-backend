@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -43,20 +44,34 @@ func AuthHandler(db *models.Database, logger *utils.Logger) func(http.Handler) h
 				var tokenData models.Token
 				var user models.User
 
-				if db.Where("token_id = ?", token).First(&tokenData).RecordNotFound() {
-					w.WriteHeader(http.StatusUnauthorized)
+				fmt.Printf("%+v\n", token)
+
+				// Fetch the token
+				err := db.Get(&tokenData, "SELECT token_id, user_id FROM tokens WHERE token_id=$1", token)
+				if err != nil {
 					logger.Debug().Str("token", token).Msg("Passed Invalid token")
-				} else if err := db.Where("id = ?", tokenData.UserID).First(&user).Error; err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					logger.Error().Str("id", tokenData.UserID).Str("token", token).Msg("User does not exist for the provided token")
-				} else {
-					logger.Info().Str("token", token).Interface("user", user).Msg("Successfull")
-					ctx := context.WithValue(r.Context(), userContextKey, &user)
-					next.ServeHTTP(w, r.WithContext(ctx))
+					next.ServeHTTP(w, r)
 					return
 				}
+
+				fmt.Printf("%+v\n", tokenData)
+
+				err = db.Get(&user, "SELECT identifier, user_name, email FROM users WHERE id=$1", tokenData.UserID)
+				if err != nil {
+					logger.Error().Int64("id", tokenData.UserID).Str("token", token).Msg("User does not exist for the provided token")
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				fmt.Printf("%+v\n", user)
+
+				logger.Info().Str("token", token).Interface("user", user).Msg("Successfull")
+				ctx := context.WithValue(r.Context(), userContextKey, &user)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
 			}
 
+			// TODO: See if there's a better way to structure this code
 			next.ServeHTTP(w, r)
 		})
 	}

@@ -1,7 +1,7 @@
 package oauth
 
 import (
-	"encoding/json"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/url"
@@ -155,21 +155,54 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform s
 	}
 
 	var userData models.User
-	userInfostr, err := json.Marshal(*userInfo)
-	println(err)
-	println("userinfo ", string(userInfostr))
-	if router.DB.Where("identifier = ?", userInfo.ID).First(&userData).RecordNotFound() {
-		router.DB.Create(&models.User{
+	err = router.DB.Get(&userData, "SELECT id, identifier, user_name, email FROM users WHERE email=$1", userInfo.Email)
+
+	if err != nil {
+		tx := router.DB.MustBegin()
+
+		statement, err := tx.PrepareNamed("INSERT INTO users (identifier, user_name, email) VALUES (:identifier, :user_name, :email) RETURNING id")
+
+		if err != nil {
+			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Msg("Could not insert user")
+			tx.Rollback()
+			return nil, nil, err
+		}
+
+		var userID int64
+		err = statement.Get(&userID, &models.User{
 			Identifier: userInfo.ID,
-			UserName:   userInfo.Name,
-			Tokens: []models.Token{{
-				TokenID: bearerToken,
-			}},
+			UserName:   sql.NullString{String: userInfo.Name, Valid: true},
+			Email:      userInfo.Email,
 		})
-	} else {
-		router.DB.Model(&userData).Association("Tokens").Append(models.Token{
+		if err != nil {
+			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Msg("Could not fetch User Database ID")
+			tx.Rollback()
+			return nil, nil, err
+		}
+
+		_, err = tx.NamedExec("INSERT INTO tokens (token_id, user_id) VALUES (:token_id, :user_id)", &models.Token{
 			TokenID: bearerToken,
+			UserID:  userID,
 		})
+
+		if err != nil {
+			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Str("token", bearerToken).Msg("Could not insert token")
+			tx.Rollback()
+			return nil, nil, err
+		}
+
+		tx.Commit()
+	} else {
+		// userData := userDataList[0]
+		_, err = router.DB.NamedExec("INSERT INTO tokens (token_id, user_id) VALUES (:token_id, :user_id)", &models.Token{
+			TokenID: bearerToken,
+			UserID:  userData.ID,
+		})
+
+		if err != nil {
+			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Str("token", bearerToken).Msg("Could not insert token")
+			return nil, nil, err
+		}
 	}
 
 	return &oauthDetails.RedirectURL, &bearerToken, nil

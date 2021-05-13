@@ -1,24 +1,20 @@
 package models
 
 import (
-	"github.com/jinzhu/gorm"
-
-	// Importing postgres driver
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/jmoiron/sqlx"
 )
 
 // Database contains a pointer to the database object
 type Database struct {
-	*gorm.DB
+	*sqlx.DB
 }
 
 // CreateDB is used to initialize a new database connection
 func CreateDB(dbURL string) (*Database, error) {
-	db, err := gorm.Open("postgres", dbURL)
+	db, err := sqlx.Connect("postgres", dbURL)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Setup Production Migrations
 	return &Database{db}, nil
 }
