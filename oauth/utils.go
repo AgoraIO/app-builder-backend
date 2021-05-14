@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreos/go-oidc"
 	"github.com/rs/zerolog/log"
+	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/microsoft"
@@ -81,10 +82,47 @@ func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config
 
 // GetUserInfo fetches the User Info from the Open ID Endpoint
 func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc.Provider) (*User, error) {
-	token, err := oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
+
+	var tokenData models.Auth
+	var token *oauth2.Token
+	err := r.DB.Get(&tokenData, "SELECT id, code, access_token, refresh_token, token_type, expiry FROM credentials WHERE code=$1", oauthDetails.Code)
 	if err != nil {
-		r.Logger.Error().Err(err).Interface("OAuth Details", oauthDetails).Interface("config", oauthConfig).Msg("OAuth Token Exchange failed")
-		return nil, err
+		token, err = oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
+		if err != nil {
+			r.Logger.Error().Err(err).Interface("OAuth Details", oauthDetails).Interface("config", oauthConfig).Msg("OAuth Token Exchange failed")
+			return nil, err
+		}
+
+		_, err = r.DB.NamedExec("INSERT INTO credentials (code, access_token, refresh_token, token_type, expiry) VALUES (:code, :access_token, :refresh_token, :token_type, :expiry)", &models.Auth{
+			Code:         oauthDetails.Code,
+			AccessToken:  token.AccessToken,
+			RefreshToken: token.RefreshToken,
+			TokenType:    token.TokenType,
+			Expiry:       token.Expiry,
+		})
+		if err != nil {
+			r.Logger.Error().Err(err).Msg("Cannot insert credentials")
+		}
+	} else {
+		token.AccessToken = tokenData.AccessToken
+		token.RefreshToken = tokenData.RefreshToken
+		token.Expiry = tokenData.Expiry
+		token.TokenType = tokenData.TokenType
+
+		tokenSource := oauthConfig.TokenSource(oauth2.NoContext, token)
+		newToken, err := tokenSource.Token()
+		if err != nil {
+			return nil, err
+		}
+
+		if newToken.AccessToken != token.AccessToken {
+			r.DB.NamedExec("UPDATE credentials SET access_token = ':access_token' WHERE code = ':code'", &models.Auth{
+				AccessToken: newToken.AccessToken,
+				Code:        oauthDetails.Code,
+			})
+		}
+
+		token = newToken
 	}
 
 	if provider == nil {
@@ -143,14 +181,6 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 		}
 
 		if oauthDetails.OAuthSite == "microsoft" {
-			// token, err := oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
-			// if err != nil {
-			// 	println("test1")
-			// 	r.Logger.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Interface("token", token).Msg("Fetching Token Failed")
-			// 	return nil, err
-			// }
-
-			// println("test2")
 
 			// tokenSource := oauthConfig.TokenSource(oauth2.NoContext, token)
 			// newToken, err := tokenSource.Token()
@@ -188,6 +218,7 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 				return nil, err
 			}
 
+			user.EmailVerified = true
 			return user, nil
 		}
 
