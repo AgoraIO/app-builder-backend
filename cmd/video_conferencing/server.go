@@ -82,9 +82,7 @@ func main() {
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	router.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
-	router.HandleFunc("/oauth/web", http.HandlerFunc(requestHandler.WebOAuthHandler))
-	router.HandleFunc("/oauth/desktop", http.HandlerFunc(requestHandler.DesktopOAuthHandler))
-	router.HandleFunc("/oauth/mobile", http.HandlerFunc(requestHandler.MobileOAuthHandler))
+	router.HandleFunc("/oauth", http.HandlerFunc(requestHandler.OAuth))
 	router.HandleFunc("/pstnConfig", http.HandlerFunc(requestHandler.PSTNConfig))
 	router.HandleFunc("/pstnHandle", http.HandlerFunc(requestHandler.DTMFHandler))
 

@@ -3,12 +3,16 @@ package oauth
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
 	"github.com/samyak-jain/agora_backend/utils"
+	"github.com/spf13/viper"
 )
 
 // User contains all the information that we get as a response from oauth
@@ -37,6 +41,7 @@ type Details struct {
 	RedirectURL string
 	BackendURL  string
 	OAuthSite   string
+	Platform    string
 }
 
 func parseState(r *http.Request) (*Details, error) {
@@ -91,67 +96,75 @@ func parseState(r *http.Request) (*Details, error) {
 		site = "google"
 	}
 
+	platform := parsedState.Get("platform")
+
+	// Lat's assume by default that we are on Web
+	if platform == "" {
+		platform = "platform"
+	}
+
 	return &Details{
 		Code:        code,
 		RedirectURL: redirect,
 		BackendURL:  finalBackendURL,
 		OAuthSite:   site,
+		Platform:    platform,
 	}, nil
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
-func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform string) (*string, *string, error) {
+func (router *Router) Handler(w http.ResponseWriter, r *http.Request) (*string, *string, *string, error) {
 	err := r.ParseForm()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		router.Logger.Error().Err(err).Msg("Could not parse form request")
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	oauthDetails, err := parseState(r)
 	router.Logger.Debug().Interface("OAuth Details", oauthDetails).Msg("OAuth Debug Information")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	oauthConfig, provider, err := router.GetOAuthConfig(oauthDetails.OAuthSite, oauthDetails.BackendURL+"/oauth/"+platform)
+	oauthConfig, provider, err := router.GetOAuthConfig(oauthDetails.OAuthSite, oauthDetails.BackendURL+"/oauth")
 	router.Logger.Debug().Interface("OAuth Config", oauthConfig).Interface("Provider", provider).Msg("OAuth Configuration Debug Information")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	userInfo, err := router.GetUserInfo(*oauthConfig, *oauthDetails, provider)
 	router.Logger.Debug().Interface("User Info", userInfo).Msg("Debug User Information")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	ok, err := router.AllowListValidator(userInfo.Email)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Error().Err(err).Str("email", userInfo.Email).Str("Sub", userInfo.ID).Interface("OAuth Details", oauthDetails).Interface("OAuth Config", oauthConfig).Msg("Email cannot be validated in Allow List")
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Error().Str("Email", userInfo.Email).Msg("Email not found in Allow List")
-		return nil, nil, errors.New("Email not found in Allow List")
+		return nil, nil, nil, errors.New("Email not found in Allow List")
 	}
 
 	if !userInfo.EmailVerified {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Error().Str("Sub", userInfo.ID).Interface("OAuth Details", oauthDetails).Interface("OAuth Config", oauthConfig).Msg("Email is not verified")
-		return nil, nil, errors.New("Email is not verified")
+		return nil, nil, nil, errors.New("Email is not verified")
 	}
 
 	bearerToken, err := utils.GenerateUUID()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Error().Err(err).Msg("Could not generate bearer token")
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	var userData models.User
@@ -165,7 +178,7 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform s
 		if err != nil {
 			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Msg("Could not insert user")
 			tx.Rollback()
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		var userID int64
@@ -177,7 +190,7 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform s
 		if err != nil {
 			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Msg("Could not fetch User Database ID")
 			tx.Rollback()
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		_, err = tx.NamedExec("INSERT INTO tokens (token_id, user_id) VALUES (:token_id, :user_id)", &models.Token{
@@ -188,7 +201,7 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform s
 		if err != nil {
 			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Str("token", bearerToken).Msg("Could not insert token")
 			tx.Rollback()
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		tx.Commit()
@@ -201,9 +214,53 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request, platform s
 
 		if err != nil {
 			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Str("token", bearerToken).Msg("Could not insert token")
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
-	return &oauthDetails.RedirectURL, &bearerToken, nil
+	return &oauthDetails.RedirectURL, &bearerToken, &oauthDetails.Platform, nil
+}
+
+// OAuth is a REST route that is called when the oauth provider redirects to here and provides the code
+func (o *Router) OAuth(w http.ResponseWriter, r *http.Request) {
+	redirect, token, platform, err := o.Handler(w, r)
+	if err != nil || platform == nil {
+		log.Print(err)
+		fmt.Fprint(w, err)
+		return
+	}
+
+	if *platform == "web" {
+		newURL, err := url.Parse(*redirect)
+		if err != nil {
+			log.Error().Err(err).Str("redirect_url", *redirect).Msg("Failed to parse redirect url")
+			fmt.Fprint(w, err)
+			return
+		}
+
+		newURL.Path = path.Join(newURL.Path, *token)
+
+		http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
+	} else if *platform == "mobile" {
+		t, err := template.ParseFiles("web/mobile.html")
+		if err != nil {
+			fmt.Fprint(w, "Internal Server Error")
+			return
+		}
+
+		t.Execute(w, TokenTemplate{
+			Token:  *token,
+			Scheme: viper.GetString("SCHEME"),
+		})
+	} else if *platform == "desktop" {
+		t, err := template.ParseFiles("web/desktop.html")
+		if err != nil {
+			fmt.Fprint(w, "Internal Server Error")
+			return
+		}
+
+		t.Execute(w, TokenTemplate{
+			Token: *token,
+		})
+	}
 }
