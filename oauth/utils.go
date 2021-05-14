@@ -10,8 +10,10 @@ import (
 	"strings"
 
 	"github.com/coreos/go-oidc"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/microsoft"
 	"golang.org/x/oauth2/slack"
 )
 
@@ -22,29 +24,38 @@ func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config
 
 	ctx := context.Background()
 
+	var client_id string
+	var client_secret string
+
 	switch site {
 	case "google":
 		provider, err = oidc.NewProvider(ctx, "https://accounts.google.com")
+		client_id = viper.GetString("GOOGLE_CLIENT_ID")
+		client_secret = viper.GetString("GOOGLE_CLIENT_SECRET")
 		if err != nil {
 			r.Logger.Error().Err(err).Msg("Google Provider failed")
 			return nil, nil, err
 		}
 	case "microsoft":
-		provider, err = oidc.NewProvider(ctx, "https://login.microsoftonline.com/common")
-		if err != nil {
-			r.Logger.Error().Err(err).Msg("Microsoft Provider failed")
-			return nil, nil, err
-		}
+		return &oauth2.Config{
+			ClientID:     viper.GetString("MICROSOFT_CLIENT_ID"),
+			ClientSecret: viper.GetString("MICROSOFT_CLIENT_SECRET"),
+			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+			Endpoint:     microsoft.AzureADEndpoint("common"),
+			RedirectURL:  redirectURI,
+		}, nil, nil
 	case "slack":
 		return &oauth2.Config{
-			ClientID:     viper.GetString("CLIENT_ID"),
-			ClientSecret: viper.GetString("CLIENT_SECRET"),
+			ClientID:     viper.GetString("SLACK_CLIENT_ID"),
+			ClientSecret: viper.GetString("SLACK_CLIENT_SECRET"),
 			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 			Endpoint:     slack.Endpoint,
 			RedirectURL:  redirectURI,
 		}, nil, nil
 	case "apple":
 		provider, err = oidc.NewProvider(ctx, "https://appleid.apple.com")
+		client_id = viper.GetString("APPLE_CLIENT_ID")
+		client_secret = viper.GetString("APPLE_CLIENT_SECRET")
 		if err != nil {
 			r.Logger.Error().Err(err).Msg("Apple Provider failed")
 			return nil, nil, err
@@ -54,9 +65,14 @@ func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config
 		return nil, nil, errors.New("Unknow state parameter passed")
 	}
 
+	if client_id == "" || client_secret == "" {
+		r.Logger.Error().Str("ID", client_id).Str("Secret", client_secret).Msg("No Client ID or Client Secret")
+		return nil, nil, errors.New("Invalid Config")
+	}
+
 	return &oauth2.Config{
-		ClientID:     viper.GetString("CLIENT_ID"),
-		ClientSecret: viper.GetString("CLIENT_SECRET"),
+		ClientID:     client_id,
+		ClientSecret: client_secret,
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 		Endpoint:     provider.Endpoint(),
 		RedirectURL:  redirectURI,
@@ -87,7 +103,7 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 				return nil, errors.New("No UserID in Slack OAuth Response")
 			}
 
-			response, err := http.Get(userInfoURL + token.AccessToken)
+			response, err := http.Get(userInfoURL + token.RefreshToken)
 			if err != nil {
 				r.Logger.Error().Err(err).Str("OAuth Details", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
 				return nil, err
@@ -124,6 +140,39 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 			}
 
 			return &User{ID: authedUser.ID, Name: user.Profile.Name, Email: user.Profile.Email, EmailVerified: true}, nil
+		}
+
+		if oauthDetails.OAuthSite == "microsoft" {
+			println(oauthDetails.Code)
+			token, err := oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
+			println(token.AccessToken)
+			println(token.RefreshToken)
+			if err != nil {
+				r.Logger.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Interface("token", token).Msg("Fetching Token Failed")
+				return nil, err
+			}
+
+			response, err := http.Get("https://graph.microsoft.com/oidc/userinfo" + token.RefreshToken)
+			if err != nil {
+				log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.RefreshToken).Msg("Could not fetch user info details")
+				return nil, err
+			}
+			defer response.Body.Close()
+
+			contents, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				log.Error().Err(err).Msg("Could not read response body")
+				return nil, err
+			}
+
+			var user *User
+			err = json.Unmarshal(contents, &user)
+			if err != nil {
+				log.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
+				return nil, err
+			}
+
+			return user, nil
 		}
 
 		r.Logger.Error().Interface("OAuth Config", oauthConfig).Interface("OAuth Details", oauthDetails).Msg("Provider should not be nil")
