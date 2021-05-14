@@ -40,7 +40,7 @@ func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config
 		return &oauth2.Config{
 			ClientID:     viper.GetString("MICROSOFT_CLIENT_ID"),
 			ClientSecret: viper.GetString("MICROSOFT_CLIENT_SECRET"),
-			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+			Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "offline_access"},
 			Endpoint:     microsoft.AzureADEndpoint("common"),
 			RedirectURL:  redirectURI,
 		}, nil, nil
@@ -103,7 +103,7 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 				return nil, errors.New("No UserID in Slack OAuth Response")
 			}
 
-			response, err := http.Get(userInfoURL + token.RefreshToken)
+			response, err := http.Get(userInfoURL + token.AccessToken)
 			if err != nil {
 				r.Logger.Error().Err(err).Str("OAuth Details", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
 				return nil, err
@@ -143,18 +143,34 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 		}
 
 		if oauthDetails.OAuthSite == "microsoft" {
-			println(oauthDetails.Code)
-			token, err := oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
-			println(token.AccessToken)
-			println(token.RefreshToken)
-			if err != nil {
-				r.Logger.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Interface("token", token).Msg("Fetching Token Failed")
-				return nil, err
-			}
+			// token, err := oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
+			// if err != nil {
+			// 	println("test1")
+			// 	r.Logger.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Interface("token", token).Msg("Fetching Token Failed")
+			// 	return nil, err
+			// }
 
-			response, err := http.Get("https://graph.microsoft.com/oidc/userinfo" + token.RefreshToken)
+			// println("test2")
+
+			// tokenSource := oauthConfig.TokenSource(oauth2.NoContext, token)
+			// newToken, err := tokenSource.Token()
+
+			// println(newToken.AccessToken)
+
+			// if err != nil {
+			// 	log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch new token")
+			// 	return nil, err
+			// }
+
+			println("Access Token")
+			println(token.AccessToken)
+
+			println("Refresh Token")
+			println(token.RefreshToken)
+
+			response, err := http.Get("https://graph.microsoft.com/oidc/userinfo" + token.AccessToken)
 			if err != nil {
-				log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.RefreshToken).Msg("Could not fetch user info details")
+				log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
 				return nil, err
 			}
 			defer response.Body.Close()
