@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -49,7 +51,7 @@ func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config
 		return &oauth2.Config{
 			ClientID:     viper.GetString("SLACK_CLIENT_ID"),
 			ClientSecret: viper.GetString("SLACK_CLIENT_SECRET"),
-			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+			Scopes:       []string{"users.profile:read"},
 			Endpoint:     slack.Endpoint,
 			RedirectURL:  redirectURI,
 		}, nil, nil
@@ -135,13 +137,19 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 				ID string
 			}
 
-			authedUser, ok := token.Extra("authed_user").(authedSlackUser)
+			authedUser, ok := token.Extra("user_id").(string)
+			fmt.Printf("%+v\n", token)
+			println(authedUser)
 			if !ok {
 				r.Logger.Error().Str("OAuth Details", oauthDetails.Code).Interface("OAuth Exchange", token).Msg("No UserID in Slack OAuth Response")
 				return nil, errors.New("No UserID in Slack OAuth Response")
 			}
 
-			response, err := http.Get(userInfoURL + token.AccessToken)
+			client := oauthConfig.Client(oauth2.NoContext, token)
+
+			data := url.Values{}
+			data.Set("user", authedUser)
+			response, err := client.PostForm(userInfoURL, data)
 			if err != nil {
 				r.Logger.Error().Err(err).Str("OAuth Details", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
 				return nil, err
@@ -173,25 +181,14 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 			}
 
 			if user.Error != "" {
-				r.Logger.Error().Str("Error", user.Error).Str("id", authedUser.ID).Str("body", string(contents)).Msg("Could not fetch Userinfo for slack")
+				r.Logger.Error().Str("Error", user.Error).Str("id", authedUser).Str("body", string(contents)).Msg("Could not fetch Userinfo for slack")
 				return nil, errors.New(user.Error)
 			}
 
-			return &User{ID: authedUser.ID, Name: user.Profile.Name, Email: user.Profile.Email, EmailVerified: true}, nil
+			return &User{ID: authedUser, Name: user.Profile.Name, Email: user.Profile.Email, EmailVerified: true}, nil
 		}
 
 		if oauthDetails.OAuthSite == "microsoft" {
-
-			// tokenSource := oauthConfig.TokenSource(oauth2.NoContext, token)
-			// newToken, err := tokenSource.Token()
-
-			// println(newToken.AccessToken)
-
-			// if err != nil {
-			// 	log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch new token")
-			// 	return nil, err
-			// }
-
 			println("Access Token")
 			println(token.AccessToken)
 
