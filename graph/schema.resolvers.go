@@ -149,18 +149,20 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		return "", errors.New("Passphrase cannot be empty")
 	}
 
-	// TODO: Switch to SQLX
+	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	if err != nil {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		return "", errors.New("Invalid URL")
+	}
 
-	// if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 	if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
-	// 		return "", errors.New("Invalid passphrase")
-	// 	}
-
-	// 	host = false
-	// } else {
-	// 	host = true
-	// }
+	if passphrase == channelData.HostPassphrase {
+		host = true
+	} else if passphrase == channelData.ViewerPassphrase {
+		host = false
+	} else {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase; Interal Server Error")
+		return "", errors.New("Invalid URL")
+	}
 
 	if !host {
 		r.Logger.Debug().Str("passphrase", passphrase).Str("channel", channelData.ChannelName).Msg("Unauthorized to record channel")
@@ -170,7 +172,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	recorder := &utils.Recorder{}
 	recorder.Channel = channelData.ChannelName
 
-	err := recorder.Acquire()
+	err = recorder.Acquire()
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Acquire Failed")
 		return "", errInternalServer
@@ -181,17 +183,18 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		r.Logger.Error().Err(err).Msg("Start Failed")
 		return "", errInternalServer
 	}
-	recordMap := make(map[string]interface{})
-	recordMap["UID"] = recorder.UID
-	recordMap["RID"] = recorder.RID
-	recordMap["SID"] = recorder.SID
+	recordDetails := models.Channel{
+		ID:           channelData.ID,
+		RecordingUID: sql.NullInt32{Int32: recorder.UID, Valid: true},
+		RecordingRID: sql.NullString{String: recorder.RID, Valid: true},
+		RecordingSID: sql.NullString{String: recorder.SID, Valid: true},
+	}
 
-	// TODO: Switch to SQLX
-
-	// if err := r.DB.Model(&channelData).Update(recordMap).Error; err != nil {
-	// 	r.Logger.Error().Err(err).Msg("Updating database for recording failed")
-	// 	return "", errInternalServer
-	// }
+	_, err = r.DB.NamedExec("UPDATE channels SET (recording_uid, recording_sid, recording_rid) = (:recording_uid, :recording_sid, :recording_rid) WHERE id = :id", &recordDetails)
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("Updating database for recording failed")
+		return "", errInternalServer
+	}
 
 	return "success", nil
 }
@@ -206,31 +209,35 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 		return "", errors.New("Passphrase cannot be empty")
 	}
 
-	// TODO: Switch to SQLX
+	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	if err != nil {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		return "", errors.New("Invalid URL")
+	}
 
-	// if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 	if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
-	// 		return "", errors.New("Invalid passphrase")
-	// 	}
-
-	// 	host = false
-	// } else {
-	// 	host = true
-	// }
-
+	if passphrase == channelData.HostPassphrase {
+		host = true
+	} else if passphrase == channelData.ViewerPassphrase {
+		host = false
+	} else {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase; Interal Server Error")
+		return "", errors.New("Invalid URL")
+	}
 	if !host {
 		r.Logger.Debug().Str("passphrase", passphrase).Str("channel", channelData.ChannelName).Msg("Unauthorized to record channel")
 		return "", errors.New("Unauthorised to record channel")
 	}
 
-	// TODO: Switch to SQLX
+	if !channelData.RecordingRID.Valid || !channelData.RecordingSID.Valid || !channelData.RecordingUID.Valid {
+		r.Logger.Debug().Interface("Channel Data", channelData).Msg("RID or SID or UID not in DB")
+		return "", errors.New("Recording not started")
+	}
 
-	// err := utils.Stop(channelData.ChannelName, channelData.RecordingUID, channelData.RecordingRID, channelData.RecordingSID)
-	// if err != nil {
-	// 	r.Logger.Error().Err(err).Msg("Stop recording failed")
-	// 	return "", errInternalServer
-	// }
+	err = utils.Stop(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String)
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("Stop recording failed")
+		return "", errInternalServer
+	}
 
 	return "success", nil
 }
@@ -244,35 +251,40 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 		return nil, errors.New("Invalid Token")
 	}
 
-	tokenIndex := -1
+	res, err := r.DB.NamedExec("DELETE FROM tokens WHERE token_id = :token_id AND user_id = :user_id", &models.Token{
+		TokenID: token,
+		UserID:  authUser.ID,
+	})
 
-	// TODO: Switch to SQLX
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("Could not delete token from database")
+		return nil, errInternalServer
+	}
 
-	// if err := r.DB.Preload("Tokens").Find(&authUser).Error; err != nil {
-	// 	r.Logger.Error().Err(err).Msg("Could not load token association")
-	// 	return nil, errInternalServer
-	// }
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		r.Logger.Error().Str("Token", token).Int64("User ID", authUser.ID).Msg("Could not get Rows Affected by DELETE in database")
+		return nil, errInternalServer
+	}
 
-	// for index := range authUser.Tokens {
-	// 	if authUser.Tokens[index].TokenID == token {
-	// 		tokenIndex = index
-	// 	}
-	// }
-
-	if tokenIndex == -1 {
+	if rowsAffected < 1 {
 		r.Logger.Debug().Str("Sub", authUser.Identifier).Msg("Token does not exist")
 		return nil, errBadRequest
 	}
 
-	// TODO: Switch to SQLX
+	tokens := []models.Token{}
+	string_token_slice := []string{}
+	err = r.DB.Select(&tokens, "SELECT * FROM tokens WHERE user_id = $1", authUser.ID)
+	if err != nil {
+		r.Logger.Error().Err(err).Int64("User ID", authUser.ID).Msg("Could not get tokens for this user ID")
+		return nil, errInternalServer
+	}
 
-	// if err := r.DB.Where("token_id = ?", token).Delete(models.Token{}).Error; err != nil {
-	// 	r.Logger.Error().Err(err).Msg("Could not delete token from database")
-	// 	return nil, errInternalServer
-	// }
+	for _, v := range tokens {
+		string_token_slice = append(string_token_slice, v.TokenID)
+	}
 
-	// return authUser.GetAllTokens(), nil
-	return []string{""}, nil
+	return string_token_slice, nil
 }
 
 func (r *mutationResolver) LogoutAllSessions(ctx context.Context) (*string, error) {

@@ -15,7 +15,7 @@ type Recorder struct {
 	http.Client
 	Channel string
 	Token   string
-	UID     int
+	UID     int32
 	RID     string
 	SID     string
 }
@@ -76,7 +76,7 @@ func (rec *Recorder) Acquire() error {
 		return err
 	}
 
-	rec.UID = creds.UID
+	rec.UID = int32(creds.UID)
 	rec.Token = creds.Rtc
 
 	requestBody, err := json.Marshal(&AcquireRequest{

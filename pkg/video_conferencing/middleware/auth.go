@@ -56,7 +56,7 @@ func AuthHandler(db *models.Database, logger *utils.Logger) func(http.Handler) h
 
 				fmt.Printf("%+v\n", tokenData)
 
-				err = db.Get(&user, "SELECT identifier, user_name, email FROM users WHERE id=$1", tokenData.UserID)
+				err = db.Get(&user, "SELECT id, identifier, user_name, email FROM users WHERE id=$1", tokenData.UserID)
 				if err != nil {
 					logger.Error().Int64("id", tokenData.UserID).Str("token", token).Msg("User does not exist for the provided token")
 					next.ServeHTTP(w, r)
