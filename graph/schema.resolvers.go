@@ -63,38 +63,28 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		return nil, err
 	}
 	secret := strings.ReplaceAll(secretGen, "-", "")
+	dtmfResult, err := utils.GenerateDTMF()
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("DTMF generation failed")
+		return nil, errInternalServer
+	}
 
 	if *enablePstn {
-		dtmfResult, err := utils.GenerateDTMF()
-		if err != nil {
-			r.Logger.Error().Err(err).Msg("DTMF generation failed")
-			return nil, errInternalServer
-		}
-
 		pstnResponse = &model.Pstn{
 			Number: viper.GetString("PSTN_NUMBER"),
 			Dtmf:   *dtmfResult,
 		}
-
-		newChannel = &models.Channel{
-			Title:            title,
-			ChannelName:      channel,
-			ChannelSecret:    sql.NullString{String: secret, Valid: true},
-			HostPassphrase:   hostPhrase,
-			ViewerPassphrase: sql.NullString{String: viewPhrase, Valid: true},
-			DTMF:             sql.NullString{String: *dtmfResult, Valid: true},
-		}
-
 	} else {
 		pstnResponse = nil
-		newChannel = &models.Channel{
-			Title:            title,
-			ChannelName:      channel,
-			ChannelSecret:    sql.NullString{String: secret, Valid: true},
-			HostPassphrase:   hostPhrase,
-			ViewerPassphrase: sql.NullString{String: viewPhrase, Valid: true},
-			DTMF:             sql.NullString{Valid: false},
-		}
+	}
+
+	newChannel = &models.Channel{
+		Title:            title,
+		ChannelName:      channel,
+		ChannelSecret:    secret,
+		HostPassphrase:   hostPhrase,
+		ViewerPassphrase: viewPhrase,
+		DTMF:             *dtmfResult,
 	}
 
 	_, err = r.DB.NamedExec("INSERT INTO channels (title, channel_name, channel_secret, host_passphrase, viewer_passphrase, dtmf) VALUES (:title, :name, :secret, :host, :view, :dtmf)", &newChannel)
@@ -314,18 +304,20 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		return nil, errors.New("Passphrase cannot be empty")
 	}
 
-	// TODO: Switch to SQLX
+	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = '$1' OR viewer_passphrase = '$1'", passphrase)
+	if err != nil {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		return nil, errors.New("Invalid URL")
+	}
 
-	// if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 	if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
-	// 		return nil, errors.New("Invalid passphrase")
-	// 	}
-
-	// 	host = false
-	// } else {
-	// 	host = true
-	// }
+	if passphrase == channelData.HostPassphrase {
+		host = true
+	} else if passphrase == channelData.ViewerPassphrase {
+		host = false
+	} else {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase; Interal Server Error")
+		return nil, errors.New("Invalid URL")
+	}
 
 	mainUser, err := utils.GenerateUserCredentials(channelData.ChannelName, true)
 	if err != nil {
@@ -345,7 +337,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		IsHost:      host,
 		MainUser:    mainUser,
 		ScreenShare: screenShare,
-		// Secret:      channelData.ChannelSecret,
+		Secret:      channelData.ChannelSecret,
 	}, nil
 }
 
@@ -359,18 +351,20 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 		return nil, errors.New("Passphrase cannot be empty")
 	}
 
-	// TODO: Switch to SQLX
+	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = '$1' OR viewer_passphrase = '$1'", passphrase)
+	if err != nil {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		return nil, errors.New("Invalid URL")
+	}
 
-	// if r.DB.Where("host_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 	if r.DB.Where("viewer_passphrase = ?", passphrase).First(&channelData).RecordNotFound() {
-	// 		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
-	// 		return nil, errors.New("Invalid passphrase")
-	// 	}
-
-	// 	host = false
-	// } else {
-	// 	host = true
-	// }
+	if passphrase == channelData.HostPassphrase {
+		host = true
+	} else if passphrase == channelData.ViewerPassphrase {
+		host = false
+	} else {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase; Interal Server Error")
+		return nil, errors.New("Invalid URL")
+	}
 
 	var hostPassphrase *string
 	if host {
@@ -380,19 +374,19 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 	}
 
 	var pstnResult *model.Pstn
-	// if channelData.DTMF != "" {
-	// 	pstnResult = &model.Pstn{
-	// 		Number: viper.GetString("PSTN_NUMBER"),
-	// 		// Dtmf:   channelData.DTMF,
-	// 	}
-	// } else {
-	// 	pstnResult = nil
-	// }
+	if channelData.DTMF != "" {
+		pstnResult = &model.Pstn{
+			Number: viper.GetString("PSTN_NUMBER"),
+			Dtmf:   channelData.DTMF,
+		}
+	} else {
+		pstnResult = nil
+	}
 
 	return &model.ShareResponse{
 		Passphrase: &model.Passphrase{
 			Host: hostPassphrase,
-			// View: channelData.ViewerPassphrase,
+			View: channelData.ViewerPassphrase,
 		},
 		Channel: channelData.ChannelName,
 		Title:   channelData.Title,

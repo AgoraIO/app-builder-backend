@@ -240,6 +240,8 @@ func (o *Router) OAuth(w http.ResponseWriter, r *http.Request) {
 
 		newURL.Path = path.Join(newURL.Path, *token)
 
+		fmt.Printf("%+v\n", newURL)
+
 		http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
 	} else if *platform == "mobile" {
 		t, err := template.ParseFiles("web/mobile.html")

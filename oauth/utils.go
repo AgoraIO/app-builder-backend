@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -138,8 +137,6 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 			}
 
 			authedUser, ok := token.Extra("user_id").(string)
-			fmt.Printf("%+v\n", token)
-			println(authedUser)
 			if !ok {
 				r.Logger.Error().Str("OAuth Details", oauthDetails.Code).Interface("OAuth Exchange", token).Msg("No UserID in Slack OAuth Response")
 				return nil, errors.New("No UserID in Slack OAuth Response")
@@ -189,12 +186,6 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 		}
 
 		if oauthDetails.OAuthSite == "microsoft" {
-			println("Access Token")
-			println(token.AccessToken)
-
-			println("Refresh Token")
-			println(token.RefreshToken)
-
 			response, err := http.Get("https://graph.microsoft.com/oidc/userinfo" + token.AccessToken)
 			if err != nil {
 				log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
