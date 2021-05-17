@@ -74,7 +74,7 @@ func main() {
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
-	requestHandler := oauth.Router{
+	requestHandler := oauth.RouterOAuth{
 		DB:     database,
 		Logger: logger,
 	}
@@ -83,8 +83,6 @@ func main() {
 	router.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
 	router.HandleFunc("/oauth", http.HandlerFunc(requestHandler.OAuth))
-	router.HandleFunc("/pstnConfig", http.HandlerFunc(requestHandler.PSTNConfig))
-	router.HandleFunc("/pstnHandle", http.HandlerFunc(requestHandler.DTMFHandler))
 
 	router.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 		logger.Info().

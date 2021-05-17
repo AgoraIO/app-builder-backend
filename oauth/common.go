@@ -23,8 +23,8 @@ type User struct {
 	EmailVerified bool `json:"verified_email"`
 }
 
-// Router refers to all the oauth endpoints
-type Router struct {
+// RouterOAuth refers to all the oauth endpoints
+type RouterOAuth struct {
 	DB     *models.Database
 	Logger *utils.Logger
 }
@@ -113,7 +113,7 @@ func parseState(r *http.Request) (*Details, error) {
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
-func (router *Router) Handler(w http.ResponseWriter, r *http.Request) (*string, *string, *string, error) {
+func (router *RouterOAuth) Handler(w http.ResponseWriter, r *http.Request) (*string, *string, *string, error) {
 	err := r.ParseForm()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -222,7 +222,7 @@ func (router *Router) Handler(w http.ResponseWriter, r *http.Request) (*string, 
 }
 
 // OAuth is a REST route that is called when the oauth provider redirects to here and provides the code
-func (o *Router) OAuth(w http.ResponseWriter, r *http.Request) {
+func (o *RouterOAuth) OAuth(w http.ResponseWriter, r *http.Request) {
 	redirect, token, platform, err := o.Handler(w, r)
 	if err != nil || platform == nil {
 		log.Print(err)

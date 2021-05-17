@@ -19,7 +19,7 @@ type PSTNTemplate struct {
 }
 
 // PSTNConfig returns the reuqired configuration to setup VoiceAPI
-func (o *Router) PSTNConfig(w http.ResponseWriter, r *http.Request) {
+func PSTNConfig(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("web/collectID.json")
 	if err != nil {
 		fmt.Fprint(w, "Internal Server Error")
@@ -30,7 +30,7 @@ func (o *Router) PSTNConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 // DTMFHandler handles DTMF
-func (o *Router) DTMFHandler(w http.ResponseWriter, r *http.Request) {
+func DTMFHandler(w http.ResponseWriter, r *http.Request) {
 	// dtmf := r.URL.Query().Get("id")
 
 	var channelData models.Channel

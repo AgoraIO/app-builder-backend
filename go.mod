@@ -7,6 +7,7 @@ require (
 	github.com/99designs/gqlgen v0.11.3
 	github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src v0.0.0-20200626082954-be54c3f42a5d
 	github.com/coreos/go-oidc v2.2.1+incompatible
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/gorilla/handlers v1.5.1

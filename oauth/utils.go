@@ -2,15 +2,19 @@ package oauth
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-oidc"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
 	"github.com/spf13/viper"
@@ -20,7 +24,7 @@ import (
 )
 
 // GetOAuthConfig makes the oauth2 config for the relevant site
-func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config, *oidc.Provider, error) {
+func (r *RouterOAuth) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config, *oidc.Provider, error) {
 	var provider *oidc.Provider
 	var err error
 
@@ -56,12 +60,17 @@ func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config
 		}, nil, nil
 	case "apple":
 		provider, err = oidc.NewProvider(ctx, "https://appleid.apple.com")
-		client_id = viper.GetString("APPLE_CLIENT_ID")
-		client_secret = viper.GetString("APPLE_CLIENT_SECRET")
 		if err != nil {
 			r.Logger.Error().Err(err).Msg("Apple Provider failed")
 			return nil, nil, err
 		}
+		client_id = viper.GetString("APPLE_CLIENT_ID")
+		client_secret, err = GenerateClientSecret(viper.GetString("APPLE_PRIVATE_KEY"), viper.GetString("APPLE_TEAM_ID"), client_id, viper.GetString("APPLE_KEY_ID"))
+		if err != nil {
+			r.Logger.Error().Err(err).Msg("Could not generate Apple Client Secret")
+			return nil, nil, err
+		}
+
 	default:
 		r.Logger.Error().Msg("Unknown state parameter passed")
 		return nil, nil, errors.New("Unknow state parameter passed")
@@ -82,7 +91,7 @@ func (r *Router) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config
 }
 
 // GetUserInfo fetches the User Info from the Open ID Endpoint
-func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc.Provider) (*User, error) {
+func (r *RouterOAuth) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc.Provider) (*User, error) {
 
 	var tokenData models.Auth
 	var token *oauth2.Token
@@ -186,6 +195,7 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 		}
 
 		if oauthDetails.OAuthSite == "microsoft" {
+
 			response, err := http.Get("https://graph.microsoft.com/oidc/userinfo" + token.AccessToken)
 			if err != nil {
 				log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
@@ -256,7 +266,7 @@ func (r *Router) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, pr
 }
 
 // AllowListValidator takes an email and searches the Allow List for a match
-func (r *Router) AllowListValidator(email string) (bool, error) {
+func (r *RouterOAuth) AllowListValidator(email string) (bool, error) {
 	for _, value := range viper.GetStringSlice("ALLOW_LIST") {
 
 		pattern := wildCardToRegexp(value)
@@ -294,4 +304,41 @@ func wildCardToRegexp(pattern string) string {
 		result.WriteString(regexp.QuoteMeta(literal))
 	}
 	return result.String()
+}
+
+/*
+From: https://github.com/Timothylock/go-signin-with-apple/blob/828dfdd59ab1d83cc630247ec12f2efa2e9cd039/apple/secret.go
+GenerateClientSecret generates the client secret used to make requests to the validation server.
+The secret expires after 6 months
+signingKey - Private key from Apple obtained by going to the keys section of the developer section
+teamID - Your 10-character Team ID
+clientID - Your Services ID, e.g. com.aaronparecki.services
+keyID - Find the 10-char Key ID value from the portal
+*/
+func GenerateClientSecret(signingKey, teamID, clientID, keyID string) (string, error) {
+	block, _ := pem.Decode([]byte(signingKey))
+	if block == nil {
+		return "", errors.New("empty block after decoding")
+	}
+
+	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return "", err
+	}
+
+	// Create the Claims
+	now := time.Now()
+	claims := &jwt.StandardClaims{
+		Issuer:    teamID,
+		IssuedAt:  now.Unix(),
+		ExpiresAt: now.Add(time.Hour*24*180 - time.Second).Unix(), // 180 days
+		Audience:  "https://appleid.apple.com",
+		Subject:   clientID,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token.Header["alg"] = "ES256"
+	token.Header["kid"] = keyID
+
+	return token.SignedString(privKey)
 }
