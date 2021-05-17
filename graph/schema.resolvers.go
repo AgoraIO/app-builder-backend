@@ -304,7 +304,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		return nil, errors.New("Passphrase cannot be empty")
 	}
 
-	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = '$1' OR viewer_passphrase = '$1'", passphrase)
+	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
 		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return nil, errors.New("Invalid URL")
