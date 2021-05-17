@@ -87,7 +87,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		DTMF:             *dtmfResult,
 	}
 
-	_, err = r.DB.NamedExec("INSERT INTO channels (title, channel_name, channel_secret, host_passphrase, viewer_passphrase, dtmf) VALUES (:title, :name, :secret, :host, :view, :dtmf)", &newChannel)
+	_, err = r.DB.NamedExec("INSERT INTO channels (title, channel_name, channel_secret, host_passphrase, viewer_passphrase, dtmf) VALUES (:title, :channel_name, :channel_secret, :host_passphrase, :viewer_passphrase, :dtmf)", newChannel)
 
 	if err != nil {
 		r.Logger.Error().Err(err).Interface("channel details", newChannel).Msg("Adding new channel to DB Failed")
@@ -118,7 +118,7 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 		return nil, errors.New("Invalid Token")
 	}
 
-	_, err = r.DB.NamedExec("UPDATE users SET user_name = ':name' WHERE identifier = ':ident'", models.User{
+	_, err = r.DB.NamedExec("UPDATE users SET user_name = ':name' WHERE identifier = ':ident'", &models.User{
 		Identifier: authUser.Identifier,
 		UserName: sql.NullString{
 			String: name,
