@@ -43,6 +43,7 @@ func main() {
 	}
 
 	utils.SetupConfig(configDir)
+
 	logger := utils.Configure(utils.Config{
 		ConsoleLoggingEnabled: viper.GetBool("ENABLE_CONSOLE_LOGGING"),
 		FileLoggingEnabled:    viper.GetBool("ENABLE_FILE_LOGGING"),

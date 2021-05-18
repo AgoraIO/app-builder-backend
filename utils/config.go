@@ -20,7 +20,7 @@ func SetDefaults() {
 	viper.SetDefault("MIGRATION_SOURCE", "file://db/migrations") // Will be used in the future
 	viper.SetDefault("ALLOWED_ORIGIN", "*")
 	viper.SetDefault("ENABLE_OAUTH", true)
-	viper.SetDefault("ENABLE_CONSOLE_LOGGINIG", true)
+	viper.SetDefault("ENABLE_CONSOLE_LOGGING", true)
 	viper.SetDefault("ENABLE_FILE_LOGGING", true)
 	viper.SetDefault("LOG_LEVEL", "DEBUG")
 	viper.SetDefault("ALLOW_LIST", []string{"*"})

@@ -70,8 +70,6 @@ func SetLogLevel() {
 // The output log file will be located at /var/log/service-xyz/service-xyz.log and
 // will be rolled according to configuration set.
 func Configure(config Config) *Logger {
-	SetLogLevel()
-
 	var writers []io.Writer
 
 	if config.ConsoleLoggingEnabled {
@@ -80,10 +78,12 @@ func Configure(config Config) *Logger {
 	if config.FileLoggingEnabled {
 		writers = append(writers, newRollingFile(config))
 	}
+
 	mw := io.MultiWriter(writers...)
 
 	// zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	logger := zerolog.New(mw).With().Timestamp().Caller().Logger()
+	SetLogLevel()
 
 	logger.Info().
 		Bool("fileLogging", config.FileLoggingEnabled).

@@ -182,9 +182,15 @@ func (router *RouterOAuth) Handler(w http.ResponseWriter, r *http.Request) (*str
 		}
 
 		var userID int64
+		var userName sql.NullString
+		if userInfo.Name == "" {
+			userName = sql.NullString{Valid: false}
+		} else {
+			userName = sql.NullString{String: userInfo.Name, Valid: true}
+		}
 		err = statement.Get(&userID, &models.User{
 			Identifier: userInfo.ID,
-			UserName:   sql.NullString{String: userInfo.Name, Valid: true},
+			UserName:   userName,
 			Email:      userInfo.Email,
 		})
 		if err != nil {

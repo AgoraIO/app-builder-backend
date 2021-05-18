@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -44,8 +43,6 @@ func AuthHandler(db *models.Database, logger *utils.Logger) func(http.Handler) h
 				var tokenData models.Token
 				var user models.User
 
-				fmt.Printf("%+v\n", token)
-
 				// Fetch the token
 				err := db.Get(&tokenData, "SELECT token_id, user_id FROM tokens WHERE token_id=$1", token)
 				if err != nil {
@@ -54,16 +51,12 @@ func AuthHandler(db *models.Database, logger *utils.Logger) func(http.Handler) h
 					return
 				}
 
-				fmt.Printf("%+v\n", tokenData)
-
 				err = db.Get(&user, "SELECT id, identifier, user_name, email FROM users WHERE id=$1", tokenData.UserID)
 				if err != nil {
 					logger.Error().Int64("id", tokenData.UserID).Str("token", token).Msg("User does not exist for the provided token")
 					next.ServeHTTP(w, r)
 					return
 				}
-
-				fmt.Printf("%+v\n", user)
 
 				logger.Info().Str("token", token).Interface("user", user).Msg("Successfull")
 				ctx := context.WithValue(r.Context(), userContextKey, &user)
