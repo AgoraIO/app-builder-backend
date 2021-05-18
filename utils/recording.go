@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -207,7 +208,7 @@ func (rec *Recorder) Start(channelTitle string, secret *string) error {
 func Stop(channel string, uid int, rid string, sid string) error {
 	requestBody, err := json.Marshal(&AcquireRequest{
 		Cname:         channel,
-		UID:           string(uid),
+		UID:           strconv.Itoa(uid),
 		ClientRequest: AcquireClientRequest{},
 	})
 

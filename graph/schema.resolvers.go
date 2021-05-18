@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/graph/generated"
 	"github.com/samyak-jain/agora_backend/graph/model"
 	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/middleware"
@@ -147,15 +148,20 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	var host bool
 
 	var authUser *models.User
+	var err error
 	if viper.GetBool("ENABLE_OAUTH") {
-		authUser = middleware.GetUserFromContext(ctx)
+		authUser, err = middleware.GetUserFromContext(ctx)
+		if err != nil {
+			r.Logger.Debug().Msg("Invalid Token")
+			return "", errors.New("Invalid Token")
+		}
 	}
 
 	if passphrase == "" {
 		return "", errors.New("Passphrase cannot be empty")
 	}
 
-	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	err = r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
 		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return "", errors.New("Invalid URL")
@@ -176,10 +182,10 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	}
 
 	var title string
-	if authUser == nil {
+	if authUser == nil || !authUser.UserName.Valid || authUser.UserName.String == "" {
 		title = channelData.Title
 	} else {
-		title = authUser.Name
+		title = authUser.UserName.String
 	}
 
 	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
