@@ -1,7 +1,9 @@
 package graph
 
+//go:generate go run github.com/99designs/gqlgen
+
 import (
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
+	"github.com/samyak-jain/agora_backend/pkg/models"
 	"github.com/samyak-jain/agora_backend/utils"
 )
 

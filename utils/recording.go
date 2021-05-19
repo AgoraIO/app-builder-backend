@@ -77,7 +77,7 @@ type StartRecordRequest struct {
 
 // Acquire runs the acquire endpoint for Cloud Recording
 func (rec *Recorder) Acquire() error {
-	creds, err := GenerateUserCredentials(rec.Channel, false)
+	creds, err := GenerateUserCredentials(rec.Channel, false, false)
 	if err != nil {
 		return err
 	}

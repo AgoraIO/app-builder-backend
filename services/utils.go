@@ -1,4 +1,4 @@
-package oauth
+package services
 
 import (
 	"context"
@@ -16,15 +16,22 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/rs/zerolog/log"
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
+	"github.com/samyak-jain/agora_backend/pkg/models"
+	"github.com/samyak-jain/agora_backend/utils"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/microsoft"
 	"golang.org/x/oauth2/slack"
 )
 
+// ServiceRouter refers to all the oauth endpoints
+type ServiceRouter struct {
+	DB     *models.Database
+	Logger *utils.Logger
+}
+
 // GetOAuthConfig makes the oauth2 config for the relevant site
-func (r *RouterOAuth) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config, *oidc.Provider, error) {
+func (r *ServiceRouter) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config, *oidc.Provider, error) {
 	var provider *oidc.Provider
 	var err error
 
@@ -91,7 +98,7 @@ func (r *RouterOAuth) GetOAuthConfig(site string, redirectURI string) (*oauth2.C
 }
 
 // GetUserInfo fetches the User Info from the Open ID Endpoint
-func (r *RouterOAuth) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc.Provider) (*User, error) {
+func (r *ServiceRouter) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc.Provider) (*User, error) {
 
 	var tokenData models.Auth
 	var token *oauth2.Token
@@ -266,7 +273,7 @@ func (r *RouterOAuth) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Detail
 }
 
 // AllowListValidator takes an email and searches the Allow List for a match
-func (r *RouterOAuth) AllowListValidator(email string) (bool, error) {
+func (r *ServiceRouter) AllowListValidator(email string) (bool, error) {
 	for _, value := range viper.GetStringSlice("ALLOW_LIST") {
 
 		pattern := wildCardToRegexp(value)

@@ -3,16 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gorilla/handlers"
 
+	"github.com/samyak-jain/agora_backend/internal/generated"
 	"github.com/samyak-jain/agora_backend/migrations"
-	"github.com/samyak-jain/agora_backend/oauth"
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/middleware"
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
+	"github.com/samyak-jain/agora_backend/pkg/graph"
+	"github.com/samyak-jain/agora_backend/pkg/middleware"
+	"github.com/samyak-jain/agora_backend/pkg/models"
+	"github.com/samyak-jain/agora_backend/services"
 
 	"github.com/spf13/viper"
 
@@ -25,8 +28,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/samyak-jain/agora_backend/graph"
-	"github.com/samyak-jain/agora_backend/graph/generated"
 
 	"github.com/newrelic/go-agent/v3/integrations/nrgorilla"
 	newrelic "github.com/newrelic/go-agent/v3/newrelic"
@@ -75,15 +76,26 @@ func main() {
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
-	requestHandler := oauth.RouterOAuth{
+	requestHandler := services.ServiceRouter{
 		DB:     database,
 		Logger: logger,
 	}
 
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	router.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
 	router.HandleFunc("/oauth", http.HandlerFunc(requestHandler.OAuth))
+	router.HandleFunc("/pstn", http.HandlerFunc(requestHandler.PSTN))
+	router.HandleFunc("/test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("%+v\n", r.URL.Query())
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			println(err.Error())
+			return
+		}
+
+		fmt.Println(string(body))
+	}))
 
 	router.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 		logger.Info().

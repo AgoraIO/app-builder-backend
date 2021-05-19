@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// User model contains all relevant details of a particular user
-type User struct {
+// UserAccount model contains all relevant details of a particular user
+type UserAccount struct {
 	ID         int64          `db:"id"`
 	UserName   sql.NullString `db:"user_name"`
 	Email      string         `db:"email"`

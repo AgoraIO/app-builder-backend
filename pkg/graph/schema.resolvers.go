@@ -11,19 +11,15 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"github.com/samyak-jain/agora_backend/graph/generated"
-	"github.com/samyak-jain/agora_backend/graph/model"
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/middleware"
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
-
+	"github.com/samyak-jain/agora_backend/internal/generated"
+	"github.com/samyak-jain/agora_backend/pkg/middleware"
+	"github.com/samyak-jain/agora_backend/pkg/models"
+	"github.com/samyak-jain/agora_backend/services"
 	"github.com/samyak-jain/agora_backend/utils"
 	"github.com/spf13/viper"
 )
 
-var errInternalServer error = errors.New("Internal Server Error")
-var errBadRequest error = errors.New("Bad Request")
-
-func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*model.ShareResponse, error) {
+func (r *mutationResolver) CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool) (*models.ShareResponse, error) {
 	r.Logger.Info().Str("mutation", "CreateChannel").Str("title", title).Msg("Creating Channel")
 	if enablePstn != nil {
 		r.Logger.Info().Bool("enablePstn", *enablePstn).Msg("")
@@ -37,7 +33,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		}
 	}
 
-	var pstnResponse *model.Pstn
+	var pstnResponse *models.Pstn
 	var newChannel *models.Channel
 
 	hostPhrase, err := utils.GenerateUUID()
@@ -72,10 +68,27 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 	}
 
 	if *enablePstn {
-		pstnResponse = &model.Pstn{
+		if len(backendURL) <= 0 {
+			r.Logger.Error().Str("backend", backendURL).Msg("Backend URL is empty")
+			return nil, errors.New("Backend URL is empty")
+		}
+
+		// TODO: Refactor to remove duplicate code
+		// Remove trailing slash from URL
+		runeBackendURL := []rune(backendURL)
+		if runeBackendURL[len(runeBackendURL)-1] == '/' {
+			runeBackendURL = runeBackendURL[:len(runeBackendURL)-1]
+		}
+
+		finalBackendURL := string(runeBackendURL)
+
+		services.CreateBridge(r.Logger, *dtmfResult, finalBackendURL)
+		pstnResponse = &models.Pstn{
 			Number: viper.GetString("PSTN_NUMBER"),
 			Dtmf:   *dtmfResult,
 		}
+
+		r.Logger.Info().Str("DTMF", *dtmfResult).Msg("PSTN PIN")
 	} else {
 		pstnResponse = nil
 	}
@@ -96,8 +109,8 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		return nil, errInternalServer
 	}
 
-	return &model.ShareResponse{
-		Passphrase: &model.Passphrase{
+	return &models.ShareResponse{
+		Passphrase: &models.Passphrase{
 			Host: &hostPhrase,
 			View: viewPhrase,
 		},
@@ -107,7 +120,44 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 	}, nil
 }
 
-func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*model.User, error) {
+func (r *mutationResolver) MutePstn(ctx context.Context, uid int, passphrase string, mute *bool) (*models.UIDMuteState, error) {
+	r.Logger.Info().Str("mutation", "MutePSTN").Int("uid", uid).Str("passphrase", passphrase).Bool("mute", *mute).Msg("Creating Channel")
+
+	var channelData models.Channel
+
+	if passphrase == "" {
+		return nil, errors.New("Passphrase cannot be empty")
+	}
+
+	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase, dtmf FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	if err != nil {
+		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		return nil, errors.New("Invalid URL")
+	}
+
+	if passphrase == channelData.HostPassphrase {
+		if channelData.DTMF == "" {
+			r.Logger.Error().Interface("Channel Data", channelData).Msg("DTMF is empty")
+			return nil, errBadRequest
+		}
+
+		services.MutePSTN(r.Logger, uid, *mute, channelData.DTMF)
+
+		return &models.UIDMuteState{
+			UID:  uid,
+			Mute: *mute,
+		}, nil
+	} else if passphrase == channelData.ViewerPassphrase {
+		r.Logger.Error().Interface("Channel Data", channelData).Msg("Passphrase does not have permission to mute")
+		return nil, errBadRequest
+	} else {
+		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase; Interal Server Error")
+		return nil, errors.New("Invalid URL")
+	}
+
+}
+
+func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*models.User, error) {
 	r.Logger.Info().Str("mutation", "UpdateUserName").Str("name", name).Msg("")
 
 	if !viper.GetBool("ENABLE_OAUTH") {
@@ -120,7 +170,7 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 		return nil, errors.New("Invalid Token")
 	}
 
-	_, err = r.DB.NamedExec("UPDATE users SET user_name = ':name' WHERE identifier = ':ident'", &models.User{
+	_, err = r.DB.NamedExec("UPDATE users SET user_name = ':name' WHERE identifier = ':ident'", &models.UserAccount{
 		Identifier: authUser.Identifier,
 		UserName: sql.NullString{
 			String: name,
@@ -133,7 +183,7 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 		return nil, errInternalServer
 	}
 
-	return &model.User{
+	return &models.User{
 		Name: name,
 	}, nil
 }
@@ -147,7 +197,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	var channelData models.Channel
 	var host bool
 
-	var authUser *models.User
+	var authUser *models.UserAccount
 	var err error
 	if viper.GetBool("ENABLE_OAUTH") {
 		authUser, err = middleware.GetUserFromContext(ctx)
@@ -163,7 +213,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 
 	err = r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
-		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return "", errors.New("Invalid URL")
 	}
 
@@ -237,7 +287,7 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 
 	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
-		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return "", errors.New("Invalid URL")
 	}
 
@@ -332,7 +382,7 @@ func (r *mutationResolver) LogoutAllSessions(ctx context.Context) (*string, erro
 	return nil, nil
 }
 
-func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*model.Session, error) {
+func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*models.Session, error) {
 	r.Logger.Info().Str("query", "JoinChannel").Str("passphrase", passphrase).Msg("")
 
 	var channelData models.Channel
@@ -344,7 +394,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 
 	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
-		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return nil, errors.New("Invalid URL")
 	}
 
@@ -357,19 +407,19 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		return nil, errors.New("Invalid URL")
 	}
 
-	mainUser, err := utils.GenerateUserCredentials(channelData.ChannelName, true)
+	mainUser, err := utils.GenerateUserCredentials(channelData.ChannelName, true, false)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Could not generate main user credentials")
 		return nil, errInternalServer
 	}
 
-	screenShare, err := utils.GenerateUserCredentials(channelData.ChannelName, false)
+	screenShare, err := utils.GenerateUserCredentials(channelData.ChannelName, false, false)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Could not generate screenshare user credentails")
 		return nil, errInternalServer
 	}
 
-	return &model.Session{
+	return &models.Session{
 		Title:       channelData.Title,
 		Channel:     channelData.ChannelName,
 		IsHost:      host,
@@ -379,8 +429,8 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 	}, nil
 }
 
-func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.ShareResponse, error) {
-	r.Logger.Info().Str("query", "Share").Str("passphrase", passphrase).Msg("")
+func (r *queryResolver) Share(ctx context.Context, passphrase string) (*models.ShareResponse, error) {
+	r.Logger.Info().Str("query", "Share").Str("passphrase", passphrase).Msg("Share")
 
 	var channelData models.Channel
 	var host bool
@@ -389,9 +439,9 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 		return nil, errors.New("Passphrase cannot be empty")
 	}
 
-	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = '$1' OR viewer_passphrase = '$1'", passphrase)
+	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase, dtmf FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
-		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return nil, errors.New("Invalid URL")
 	}
 
@@ -411,9 +461,9 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 		hostPassphrase = nil
 	}
 
-	var pstnResult *model.Pstn
+	var pstnResult *models.Pstn
 	if channelData.DTMF != "" {
-		pstnResult = &model.Pstn{
+		pstnResult = &models.Pstn{
 			Number: viper.GetString("PSTN_NUMBER"),
 			Dtmf:   channelData.DTMF,
 		}
@@ -421,8 +471,8 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 		pstnResult = nil
 	}
 
-	return &model.ShareResponse{
-		Passphrase: &model.Passphrase{
+	return &models.ShareResponse{
+		Passphrase: &models.Passphrase{
 			Host: hostPassphrase,
 			View: channelData.ViewerPassphrase,
 		},
@@ -432,7 +482,7 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*model.Sh
 	}, nil
 }
 
-func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
+func (r *queryResolver) GetUser(ctx context.Context) (*models.User, error) {
 	r.Logger.Info().Str("query", "GetUser").Msg("")
 
 	if !viper.GetBool("ENABLE_OAUTH") {
@@ -446,12 +496,12 @@ func (r *queryResolver) GetUser(ctx context.Context) (*model.User, error) {
 	}
 
 	if !authUser.UserName.Valid {
-		return &model.User{
+		return &models.User{
 			Name: "",
 		}, nil
 	}
 
-	return &model.User{
+	return &models.User{
 		Name: authUser.UserName.String,
 	}, nil
 }
@@ -484,3 +534,12 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+var errInternalServer error = errors.New("Internal Server Error")
+var errBadRequest error = errors.New("Bad Request")

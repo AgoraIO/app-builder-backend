@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
+	"github.com/samyak-jain/agora_backend/pkg/models"
 	"github.com/samyak-jain/agora_backend/utils"
 
 	"github.com/spf13/viper"
@@ -71,10 +71,10 @@ func AuthHandler(db *models.Database, logger *utils.Logger) func(http.Handler) h
 }
 
 // GetUserFromContext fetches the user from the context
-func GetUserFromContext(ctx context.Context) (*models.User, error) {
+func GetUserFromContext(ctx context.Context) (*models.UserAccount, error) {
 	userObject := ctx.Value(userContextKey)
 	if userObject != nil {
-		return userObject.(*models.User), nil
+		return userObject.(*models.UserAccount), nil
 	}
 
 	return nil, errors.New("No such user")

@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"io"
+	mrand "math/rand"
 
 	"github.com/gofrs/uuid"
 )
@@ -24,6 +25,12 @@ func GenerateDTMF() (*string, error) {
 
 	result := string(b)
 	return &result, nil
+}
+
+// RandomRange generates a random range in a particular range
+// Reference: https://stackoverflow.com/a/36003006
+func RandomRange(low, hi int) int {
+	return low + mrand.Intn(hi-low)
 }
 
 // GenerateUUID generates a uuid string

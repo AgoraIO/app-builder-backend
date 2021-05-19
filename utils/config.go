@@ -32,6 +32,10 @@ func SetDefaults() {
 		viper.SetDefault("RUN_MIGRATION", true)
 	}
 
+	if viper.GetString("ENCRYPTION_ENABLED") == "true" {
+		viper.SetDefault("ENCRYPTION_ENABLED", true)
+	}
+
 	if viper.GetString("ENABLE_OAUTH") == "false" {
 		viper.Set("ENABLE_OAUTH", false)
 	}

@@ -1,4 +1,4 @@
-package oauth
+package services
 
 import (
 	"database/sql"
@@ -10,7 +10,7 @@ import (
 	"path"
 
 	"github.com/rs/zerolog/log"
-	"github.com/samyak-jain/agora_backend/pkg/video_conferencing/models"
+	"github.com/samyak-jain/agora_backend/pkg/models"
 	"github.com/samyak-jain/agora_backend/utils"
 	"github.com/spf13/viper"
 )
@@ -21,12 +21,6 @@ type User struct {
 	Name          string `json:"given_name"`
 	Email         string
 	EmailVerified bool `json:"verified_email"`
-}
-
-// RouterOAuth refers to all the oauth endpoints
-type RouterOAuth struct {
-	DB     *models.Database
-	Logger *utils.Logger
 }
 
 // TokenTemplate is a struct that will be used to template the token into the html that will be served for Desktop and Mobile
@@ -113,7 +107,7 @@ func parseState(r *http.Request) (*Details, error) {
 }
 
 // Handler is the handler that will do most of the heavy lifting for OAuth
-func (router *RouterOAuth) Handler(w http.ResponseWriter, r *http.Request) (*string, *string, *string, error) {
+func (router *ServiceRouter) Handler(w http.ResponseWriter, r *http.Request) (*string, *string, *string, error) {
 	err := r.ParseForm()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -167,7 +161,7 @@ func (router *RouterOAuth) Handler(w http.ResponseWriter, r *http.Request) (*str
 		return nil, nil, nil, err
 	}
 
-	var userData models.User
+	var userData models.UserAccount
 	err = router.DB.Get(&userData, "SELECT id, identifier, user_name, email FROM users WHERE email=$1", userInfo.Email)
 
 	if err != nil {
@@ -188,7 +182,7 @@ func (router *RouterOAuth) Handler(w http.ResponseWriter, r *http.Request) (*str
 		} else {
 			userName = sql.NullString{String: userInfo.Name, Valid: true}
 		}
-		err = statement.Get(&userID, &models.User{
+		err = statement.Get(&userID, &models.UserAccount{
 			Identifier: userInfo.ID,
 			UserName:   userName,
 			Email:      userInfo.Email,
@@ -228,7 +222,7 @@ func (router *RouterOAuth) Handler(w http.ResponseWriter, r *http.Request) (*str
 }
 
 // OAuth is a REST route that is called when the oauth provider redirects to here and provides the code
-func (o *RouterOAuth) OAuth(w http.ResponseWriter, r *http.Request) {
+func (o *ServiceRouter) OAuth(w http.ResponseWriter, r *http.Request) {
 	redirect, token, platform, err := o.Handler(w, r)
 	if err != nil || platform == nil {
 		log.Print(err)

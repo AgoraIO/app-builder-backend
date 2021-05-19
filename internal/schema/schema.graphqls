@@ -35,6 +35,11 @@ type User {
   email: String!
 }
 
+type UIDMuteState {
+  uid: Int!
+  mute: Boolean!
+}
+
 type Query {
   joinChannel(passphrase: String!): Session!
   share(passphrase: String!): ShareResponse!
@@ -43,7 +48,8 @@ type Query {
 }
 
 type Mutation {
-  createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
+  createChannel(title: String!, backendURL: String!, enablePSTN: Boolean = false): ShareResponse!
+  mutePSTN(uid: Int!, passphrase: String!, mute: Boolean = true): UIDMuteState!
   updateUserName(name: String!): User!
   startRecordingSession(passphrase: String!, secret: String): String!
   stopRecordingSession(passphrase: String!): String!
