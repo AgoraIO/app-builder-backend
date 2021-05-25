@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -85,17 +84,6 @@ func main() {
 	router.Handle("/query", srv)
 	router.HandleFunc("/oauth", http.HandlerFunc(requestHandler.OAuth))
 	router.HandleFunc("/pstn", http.HandlerFunc(requestHandler.PSTN))
-	router.HandleFunc("/test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("%+v\n", r.URL.Query())
-
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			println(err.Error())
-			return
-		}
-
-		fmt.Println(string(body))
-	}))
 
 	router.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 		logger.Info().

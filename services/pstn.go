@@ -23,7 +23,6 @@ type BridgeConfig struct {
 	MinimumParticipants int    `json:"minParticipants"`
 	ExitChimes          string `json:"exitChimes"`
 	ConfigParameterURL  string `json:"confParamsUrl"`
-	EventURL            string `json:"confEventsUrl"`
 }
 
 type BridgeRequest struct {
@@ -55,7 +54,6 @@ func CreateBridge(logger *utils.Logger, confID string, backendURL string) {
 						MinimumParticipants: 1,
 						ExitChimes:          "none",
 						ConfigParameterURL:  backendURL + "/pstn",
-						EventURL:            backendURL + "/test",
 					},
 				},
 			},
@@ -267,7 +265,7 @@ func MutePSTN(logger *utils.Logger, uid int, muteState bool, confID string) {
 
 	logger.Debug().Str("Conference Info Parameters", string(requestBody)).Msg("Get Conference Info")
 
-	req, err := http.NewRequest("POST", "https://api-dev.turbobridge.com/4.3/Bridge", bytes.NewBuffer(requestBody))
+	req, err := http.NewRequest("POST", "https://api-dev.turbobridge.com/4.3/LCM", bytes.NewBuffer(requestBody))
 	if err != nil {
 		logger.Error().Err(err).Msg("Unable to Create Request")
 		return
@@ -286,8 +284,7 @@ func MutePSTN(logger *utils.Logger, uid int, muteState bool, confID string) {
 
 	if resp.StatusCode != 200 {
 		logger.Error().Int("Status Code", resp.StatusCode).Msg("Error response in create bridge")
-	} else {
-		logger.Info().Msg("Create Bridge Response")
+		return
 	}
 
 	var result ConferencePSTNResponse
@@ -363,7 +360,7 @@ func SetMuteState(logger *utils.Logger, callID string, confID string, muteState 
 
 	logger.Debug().Str("Change Conference parameters", string(requestBody)).Msg("Mute user in conference")
 
-	req, err := http.NewRequest("POST", "https://api-dev.turbobridge.com/4.3/Bridge", bytes.NewBuffer(requestBody))
+	req, err := http.NewRequest("POST", "https://api-dev.turbobridge.com/4.3/LCM", bytes.NewBuffer(requestBody))
 	if err != nil {
 		logger.Error().Err(err).Msg("Unable to Create Request")
 		return
