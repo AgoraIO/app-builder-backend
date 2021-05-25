@@ -154,7 +154,6 @@ func (r *mutationResolver) MutePstn(ctx context.Context, uid int, passphrase str
 		r.Logger.Debug().Str("passphrase", passphrase).Msg("Invalid Passphrase; Interal Server Error")
 		return nil, errors.New("Invalid URL")
 	}
-
 }
 
 func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*models.User, error) {
@@ -363,25 +362,6 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 	return string_token_slice, nil
 }
 
-func (r *mutationResolver) LogoutAllSessions(ctx context.Context) (*string, error) {
-	r.Logger.Info().Str("mutation", "LogoutAllSessions").Msg("")
-
-	// authUser, err := middleware.GetUserFromContext(ctx)
-	// if err != nil {
-	// 	r.Logger.Debug().Msg("Invalid Token")
-	// 	return nil, errors.New("Invalid Token")
-	// }
-
-	// TODO: Switch to SQLX
-
-	// if err := r.DB.Where("identifier = ?", authUser.ID).Delete(models.Token{}).Error; err != nil {
-	// 	r.Logger.Error().Err(err).Msg("Could not delete all the tokens from the database")
-	// 	return nil, errInternalServer
-	// }
-
-	return nil, nil
-}
-
 func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*models.Session, error) {
 	r.Logger.Info().Str("query", "JoinChannel").Str("passphrase", passphrase).Msg("")
 
@@ -506,26 +486,6 @@ func (r *queryResolver) GetUser(ctx context.Context) (*models.User, error) {
 	}, nil
 }
 
-func (r *queryResolver) GetSessions(ctx context.Context) ([]string, error) {
-	r.Logger.Info().Str("query", "GetSessions").Msg("")
-
-	_, err := middleware.GetUserFromContext(ctx)
-	if err != nil {
-		r.Logger.Debug().Msg("Invalid Token")
-		return nil, errors.New("Invalid Token")
-	}
-
-	// TODO: Switch to SQLX
-
-	// if err := r.DB.Preload("Tokens").Find(&authUser).Error; err != nil {
-	// 	r.Logger.Error().Err(err).Msg("Could not preload all the tokens")
-	// 	return nil, errInternalServer
-	// }
-
-	// return authUser.GetAllTokens(), nil
-	return []string{""}, nil
-}
-
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
@@ -535,11 +495,5 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
 var errInternalServer error = errors.New("Internal Server Error")
 var errBadRequest error = errors.New("Bad Request")

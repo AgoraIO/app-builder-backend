@@ -44,7 +44,6 @@ type Query {
   joinChannel(passphrase: String!): Session!
   share(passphrase: String!): ShareResponse!
   getUser: User!
-  getSessions: [String!]
 }
 
 type Mutation {
@@ -54,5 +53,4 @@ type Mutation {
   startRecordingSession(passphrase: String!, secret: String): String!
   stopRecordingSession(passphrase: String!): String!
   logoutSession(token: String!): [String!]
-  logoutAllSessions: String
 }

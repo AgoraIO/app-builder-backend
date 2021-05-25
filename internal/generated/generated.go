@@ -45,7 +45,6 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Mutation struct {
 		CreateChannel         func(childComplexity int, title string, backendURL string, enablePstn *bool) int
-		LogoutAllSessions     func(childComplexity int) int
 		LogoutSession         func(childComplexity int, token string) int
 		MutePstn              func(childComplexity int, uid int, passphrase string, mute *bool) int
 		StartRecordingSession func(childComplexity int, passphrase string, secret *string) int
@@ -64,7 +63,6 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		GetSessions func(childComplexity int) int
 		GetUser     func(childComplexity int) int
 		JoinChannel func(childComplexity int, passphrase string) int
 		Share       func(childComplexity int, passphrase string) int
@@ -110,13 +108,11 @@ type MutationResolver interface {
 	StartRecordingSession(ctx context.Context, passphrase string, secret *string) (string, error)
 	StopRecordingSession(ctx context.Context, passphrase string) (string, error)
 	LogoutSession(ctx context.Context, token string) ([]string, error)
-	LogoutAllSessions(ctx context.Context) (*string, error)
 }
 type QueryResolver interface {
 	JoinChannel(ctx context.Context, passphrase string) (*models.Session, error)
 	Share(ctx context.Context, passphrase string) (*models.ShareResponse, error)
 	GetUser(ctx context.Context) (*models.User, error)
-	GetSessions(ctx context.Context) ([]string, error)
 }
 
 type executableSchema struct {
@@ -145,13 +141,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreateChannel(childComplexity, args["title"].(string), args["backendURL"].(string), args["enablePSTN"].(*bool)), true
-
-	case "Mutation.logoutAllSessions":
-		if e.complexity.Mutation.LogoutAllSessions == nil {
-			break
-		}
-
-		return e.complexity.Mutation.LogoutAllSessions(childComplexity), true
 
 	case "Mutation.logoutSession":
 		if e.complexity.Mutation.LogoutSession == nil {
@@ -240,13 +229,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Passphrase.View(childComplexity), true
-
-	case "Query.getSessions":
-		if e.complexity.Query.GetSessions == nil {
-			break
-		}
-
-		return e.complexity.Query.GetSessions(childComplexity), true
 
 	case "Query.getUser":
 		if e.complexity.Query.GetUser == nil {
@@ -508,7 +490,6 @@ type Query {
   joinChannel(passphrase: String!): Session!
   share(passphrase: String!): ShareResponse!
   getUser: User!
-  getSessions: [String!]
 }
 
 type Mutation {
@@ -518,7 +499,6 @@ type Mutation {
   startRecordingSession(passphrase: String!, secret: String): String!
   stopRecordingSession(passphrase: String!): String!
   logoutSession(token: String!): [String!]
-  logoutAllSessions: String
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -994,38 +974,6 @@ func (ec *executionContext) _Mutation_logoutSession(ctx context.Context, field g
 	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_logoutAllSessions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().LogoutAllSessions(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _PSTN_number(ctx context.Context, field graphql.CollectedField, obj *models.Pstn) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1280,38 +1228,6 @@ func (ec *executionContext) _Query_getUser(ctx context.Context, field graphql.Co
 	res := resTmp.(*models.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋpkgᚋmodelsᚐUser(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_getSessions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetSessions(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3111,8 +3027,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "logoutSession":
 			out.Values[i] = ec._Mutation_logoutSession(ctx, field)
-		case "logoutAllSessions":
-			out.Values[i] = ec._Mutation_logoutAllSessions(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3240,17 +3154,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
-				return res
-			})
-		case "getSessions":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_getSessions(ctx, field)
 				return res
 			})
 		case "__type":
