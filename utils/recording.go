@@ -37,6 +37,7 @@ type TranscodingConfig struct {
 	Bitrate          int    `json:"bitrate"`
 	Fps              int    `json:"fps"`
 	MixedVideoLayout int    `json:"mixedVideoLayout"`
+	MaxResolutionUID string `json:"maxResolutionUid,omitempty"`
 	BackgroundColor  string `json:"backgroundColor"`
 }
 
@@ -202,6 +203,52 @@ func (rec *Recorder) Start(channelTitle string, secret *string) error {
 	rec.SID = result["sid"]
 
 	return nil
+}
+
+type UpdateRecordRequest struct {
+	Cname         string            `json:"cname"`
+	UID           string            `json:"uid"`
+	ClientRequest TranscodingConfig `json:"clientRequest"`
+}
+
+func ChangeRecordingMode(channel string, uid int, rid string, sid string, mode int, maxUID string) error {
+	requestBody, err := json.Marshal(&UpdateRecordRequest{
+		Cname: channel,
+		UID:   strconv.Itoa(uid),
+		ClientRequest: TranscodingConfig{
+			MixedVideoLayout: mode,
+			MaxResolutionUID: maxUID,
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", "https://api.agora.io/v1/apps/"+viper.GetString("APP_ID")+"/cloud_recording/resourceid/"+rid+"/sid/"+sid+"/mode/mix/update",
+		bytes.NewBuffer(requestBody))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(viper.GetString("CUSTOMER_ID"), viper.GetString("CUSTOMER_CERTIFICATE"))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	var result map[string]string
+	json.NewDecoder(resp.Body).Decode(&result)
+
+	log.Info().Interface("response", result).Msg("Update Cloud Recording Response")
+
+	return nil
+
 }
 
 // Stop stops the cloud recording

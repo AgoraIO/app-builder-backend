@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -156,6 +157,84 @@ func (r *mutationResolver) MutePstn(ctx context.Context, uid int, passphrase str
 	}
 }
 
+func (r *mutationResolver) SetPresenter(ctx context.Context, uid int, passphrase string) (int, error) {
+	r.Logger.Info().Str("mutation", "SetPresenter").Str("passphrase", passphrase).Int("uid", uid).Msg("")
+
+	if !viper.GetBool("ENABLE_OAUTH") {
+		return 0, nil
+	}
+
+	_, err := middleware.GetUserFromContext(ctx)
+	if err != nil {
+		r.Logger.Debug().Msg("Invalid Token")
+		return 0, errors.New("Invalid Token")
+	}
+
+	if passphrase == "" {
+		return 0, errors.New("Passphrase cannot be empty")
+	}
+
+	var channelData models.Channel
+
+	err = r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase, recording_rid, recording_sid, recording_uid FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	if err != nil {
+		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		return 0, errors.New("Invalid URL")
+	}
+
+	if !channelData.RecordingRID.Valid || !channelData.RecordingSID.Valid || !channelData.RecordingUID.Valid {
+		r.Logger.Debug().Interface("Channel Data", channelData).Msg("RID or SID or UID not in DB")
+		return 0, errors.New("Recording not started")
+	}
+
+	err = utils.ChangeRecordingMode(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String, 2, strconv.Itoa(uid))
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("Stop recording failed")
+		return 0, errInternalServer
+	}
+
+	return uid, nil
+}
+
+func (r *mutationResolver) SetNormal(ctx context.Context, passphrase string) (string, error) {
+	r.Logger.Info().Str("mutation", "SetPresenter").Str("passphrase", passphrase).Msg("")
+
+	if !viper.GetBool("ENABLE_OAUTH") {
+		return "", nil
+	}
+
+	_, err := middleware.GetUserFromContext(ctx)
+	if err != nil {
+		r.Logger.Debug().Msg("Invalid Token")
+		return "", errors.New("Invalid Token")
+	}
+
+	if passphrase == "" {
+		return "", errors.New("Passphrase cannot be empty")
+	}
+
+	var channelData models.Channel
+
+	err = r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase, recording_rid, recording_sid, recording_uid FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	if err != nil {
+		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
+		return "", errors.New("Invalid URL")
+	}
+
+	if !channelData.RecordingRID.Valid || !channelData.RecordingSID.Valid || !channelData.RecordingUID.Valid {
+		r.Logger.Debug().Interface("Channel Data", channelData).Msg("RID or SID or UID not in DB")
+		return "", errors.New("Recording not started")
+	}
+
+	err = utils.ChangeRecordingMode(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String, 1, "")
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("Stop recording failed")
+		return "", errInternalServer
+	}
+
+	return "success", nil
+}
+
 func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*models.User, error) {
 	r.Logger.Info().Str("mutation", "UpdateUserName").Str("name", name).Msg("")
 
@@ -284,7 +363,7 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 		return "", errors.New("Passphrase cannot be empty")
 	}
 
-	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase, recording_rid, recording_sid, recording_uid FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
 		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return "", errors.New("Invalid URL")
@@ -495,5 +574,11 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
 var errInternalServer error = errors.New("Internal Server Error")
 var errBadRequest error = errors.New("Bad Request")
