@@ -23,4 +23,11 @@ CREATE TABLE IF NOT EXISTS users (
     token_id TEXT,
     user_id INT,
     CONSTRAINT tokens_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);CREATE TABLE IF NOT EXISTS credentials (
+    id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    code TEXT NOT NULL,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT NOT NULL,
+    token_type TEXT NOT NULL,
+    expiry TIMESTAMP
 );

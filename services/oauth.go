@@ -175,7 +175,6 @@ func (router *ServiceRouter) Handler(w http.ResponseWriter, r *http.Request) (*s
 		tx := router.DB.MustBegin()
 
 		statement, err := tx.PrepareNamed("INSERT INTO users (identifier, user_name, email) VALUES (:identifier, :user_name, :email) RETURNING id")
-
 		if err != nil {
 			router.Logger.Error().Err(err).Str("identifier", userInfo.ID).Msg("Could not insert user")
 			tx.Rollback()
@@ -213,7 +212,7 @@ func (router *ServiceRouter) Handler(w http.ResponseWriter, r *http.Request) (*s
 
 		tx.Commit()
 	} else {
-		// userData := userDataList[0]
+
 		_, err = router.DB.NamedExec("INSERT INTO tokens (token_id, user_id) VALUES (:token_id, :user_id)", &models.Token{
 			TokenID: bearerToken,
 			UserID:  userData.ID,
