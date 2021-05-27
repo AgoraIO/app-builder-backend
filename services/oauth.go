@@ -1,23 +1,30 @@
 package services
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 
+	"github.com/coreos/go-oidc"
 	"github.com/rs/zerolog/log"
 	"github.com/samyak-jain/agora_backend/pkg/models"
 	"github.com/samyak-jain/agora_backend/utils"
 	"github.com/spf13/viper"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/microsoft"
+	"golang.org/x/oauth2/slack"
 )
 
 // User contains all the information that we get as a response from oauth
 type User struct {
-	ID            string
+	ID            string `json:"sub"`
 	Name          string `json:"given_name"`
 	Email         string
 	EmailVerified bool `json:"verified_email"`
@@ -265,4 +272,258 @@ func (o *ServiceRouter) OAuth(w http.ResponseWriter, r *http.Request) {
 			Token: *token,
 		})
 	}
+}
+
+// GetOAuthConfig makes the oauth2 config for the relevant site
+func (r *ServiceRouter) GetOAuthConfig(site string, redirectURI string) (*oauth2.Config, *oidc.Provider, error) {
+	var provider *oidc.Provider
+	var err error
+
+	ctx := context.Background()
+
+	var client_id string
+	var client_secret string
+
+	switch site {
+	case "google":
+		provider, err = oidc.NewProvider(ctx, "https://accounts.google.com")
+		client_id = viper.GetString("GOOGLE_CLIENT_ID")
+		client_secret = viper.GetString("GOOGLE_CLIENT_SECRET")
+		if err != nil {
+			r.Logger.Error().Err(err).Msg("Google Provider failed")
+			return nil, nil, err
+		}
+	case "microsoft":
+		return &oauth2.Config{
+			ClientID:     viper.GetString("MICROSOFT_CLIENT_ID"),
+			ClientSecret: viper.GetString("MICROSOFT_CLIENT_SECRET"),
+			Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "offline_access"},
+			Endpoint:     microsoft.AzureADEndpoint("common"),
+			RedirectURL:  redirectURI,
+		}, nil, nil
+	case "slack":
+		return &oauth2.Config{
+			ClientID:     viper.GetString("SLACK_CLIENT_ID"),
+			ClientSecret: viper.GetString("SLACK_CLIENT_SECRET"),
+			Scopes:       []string{"users.profile:read"},
+			Endpoint:     slack.Endpoint,
+			RedirectURL:  redirectURI,
+		}, nil, nil
+	case "apple":
+		provider, err = oidc.NewProvider(ctx, "https://appleid.apple.com")
+		if err != nil {
+			r.Logger.Error().Err(err).Msg("Apple Provider failed")
+			return nil, nil, err
+		}
+		client_id = viper.GetString("APPLE_CLIENT_ID")
+		client_secret, err = GenerateAppleClientSecret(viper.GetString("APPLE_PRIVATE_KEY"), viper.GetString("APPLE_TEAM_ID"), client_id, viper.GetString("APPLE_KEY_ID"))
+		if err != nil {
+			r.Logger.Error().Err(err).Msg("Could not generate Apple Client Secret")
+			return nil, nil, err
+		}
+
+	default:
+		r.Logger.Error().Msg("Unknown state parameter passed")
+		return nil, nil, errors.New("Unknow state parameter passed")
+	}
+
+	if client_id == "" || client_secret == "" {
+		r.Logger.Error().Str("ID", client_id).Str("Secret", client_secret).Msg("No Client ID or Client Secret")
+		return nil, nil, errors.New("Invalid Config")
+	}
+
+	return &oauth2.Config{
+		ClientID:     client_id,
+		ClientSecret: client_secret,
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+		Endpoint:     provider.Endpoint(),
+		RedirectURL:  redirectURI,
+	}, provider, nil
+}
+
+// GetUserInfo fetches the User Info from the Open ID Endpoint
+func (r *ServiceRouter) GetUserInfo(oauthConfig oauth2.Config, oauthDetails Details, provider *oidc.Provider) (*User, error) {
+
+	var tokenData models.Auth
+	var token *oauth2.Token
+	err := r.DB.Get(&tokenData, "SELECT id, code, access_token, refresh_token, token_type, expiry FROM credentials WHERE code=$1", oauthDetails.Code)
+	if err != nil {
+		r.Logger.Debug().Msg("Code not found in database")
+
+		token, err = oauthConfig.Exchange(oauth2.NoContext, oauthDetails.Code)
+		if err != nil {
+			r.Logger.Error().Err(err).Interface("OAuth Details", oauthDetails).Interface("config", oauthConfig).Msg("OAuth Token Exchange failed")
+			return nil, err
+		}
+
+		_, err = r.DB.NamedExec("INSERT INTO credentials (code, access_token, refresh_token, token_type, expiry) VALUES (:code, :access_token, :refresh_token, :token_type, :expiry)", &models.Auth{
+			Code:         oauthDetails.Code,
+			AccessToken:  token.AccessToken,
+			RefreshToken: token.RefreshToken,
+			TokenType:    token.TokenType,
+			Expiry:       token.Expiry,
+		})
+		if err != nil {
+			r.Logger.Error().Err(err).Msg("Cannot insert credentials")
+		}
+	} else {
+		token.AccessToken = tokenData.AccessToken
+		token.RefreshToken = tokenData.RefreshToken
+		token.Expiry = tokenData.Expiry
+		token.TokenType = tokenData.TokenType
+
+		tokenSource := oauthConfig.TokenSource(oauth2.NoContext, token)
+		newToken, err := tokenSource.Token()
+		if err != nil {
+			return nil, err
+		}
+
+		if newToken.AccessToken != token.AccessToken {
+			r.DB.NamedExec("UPDATE credentials SET access_token = ':access_token' WHERE code = ':code'", &models.Auth{
+				AccessToken: newToken.AccessToken,
+				Code:        oauthDetails.Code,
+			})
+		}
+
+		token = newToken
+	}
+
+	if provider == nil {
+		if oauthDetails.OAuthSite == "slack" {
+			// Adding this since Slack does not publicly publish it's .well-known discovery URL.
+			// So we will have to manually hard code the UserInfo URL until we find that URL
+			userInfoURL := "https://slack.com/api/users.profile.get"
+
+			type authedSlackUser struct {
+				ID string
+			}
+
+			authedUser, ok := token.Extra("user_id").(string)
+			if !ok {
+				r.Logger.Error().Str("OAuth Details", oauthDetails.Code).Interface("OAuth Exchange", token).Msg("No UserID in Slack OAuth Response")
+				return nil, errors.New("No UserID in Slack OAuth Response")
+			}
+
+			client := oauthConfig.Client(oauth2.NoContext, token)
+
+			data := url.Values{}
+			data.Set("user", authedUser)
+			response, err := client.PostForm(userInfoURL, data)
+			if err != nil {
+				r.Logger.Error().Err(err).Str("OAuth Details", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
+				return nil, err
+			}
+			defer response.Body.Close()
+
+			contents, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				r.Logger.Error().Interface("Response Body", response.Body).Err(err).Msg("Could not read response body")
+				return nil, err
+			}
+
+			type SlackUser struct {
+				Name  string `json:"display_name_normalized"`
+				Email string
+			}
+
+			type SlackResponse struct {
+				Ok      bool
+				Profile *SlackUser `json:"profile,omitempty"`
+				Error   string     `json:"error,omitempty"`
+			}
+
+			var user SlackResponse
+			err = json.Unmarshal(contents, &user)
+			if err != nil {
+				r.Logger.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
+				return nil, err
+			}
+
+			if user.Error != "" {
+				r.Logger.Error().Str("Error", user.Error).Str("id", authedUser).Str("body", string(contents)).Msg("Could not fetch Userinfo for slack")
+				return nil, errors.New(user.Error)
+			}
+
+			return &User{ID: authedUser, Name: user.Profile.Name, Email: user.Profile.Email, EmailVerified: true}, nil
+		}
+
+		if oauthDetails.OAuthSite == "microsoft" {
+			client := &http.Client{}
+			req, err := http.NewRequest("GET", "https://graph.microsoft.com/oidc/userinfo", nil)
+			if err != nil {
+				log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
+				return nil, err
+			}
+
+			bearer := "Bearer " + token.AccessToken
+			req.Header.Add("Authorization", bearer)
+
+			response, err := client.Do(req)
+			if err != nil {
+				log.Error().Err(err).Str("code", oauthDetails.Code).Str("token", token.AccessToken).Msg("Could not fetch user info details")
+				return nil, err
+			}
+
+			defer response.Body.Close()
+
+			contents, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				log.Error().Err(err).Msg("Could not read response body")
+				return nil, err
+			}
+
+			var user *User
+			err = json.Unmarshal(contents, &user)
+			if err != nil {
+				log.Error().Err(err).Str("body", string(contents)).Msg("Could not parse response body")
+				return nil, err
+			}
+
+			user.EmailVerified = true
+			return user, nil
+		}
+
+		r.Logger.Error().Interface("OAuth Config", oauthConfig).Interface("OAuth Details", oauthDetails).Msg("Provider should not be nil")
+		return nil, errors.New("Provider should not be nil")
+	}
+
+	if oauthDetails.OAuthSite == "apple" {
+		rawIDToken, ok := token.Extra("id_token").(string)
+		if !ok {
+			r.Logger.Error().Interface("token", token).Msg("Could not get id_token from apple token")
+			return nil, errors.New("Could not get id_token from apple token")
+		}
+		idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: oauthConfig.ClientID})
+		idToken, err := idTokenVerifier.Verify(oauth2.NoContext, rawIDToken)
+		if err != nil {
+			r.Logger.Error().Str("rawIDToken", rawIDToken).Interface("idTokenVerifier", idTokenVerifier).Interface("OAuth Config", oauthConfig).Interface("OAuth Details", oauthDetails).Msg("Could not verify id_token")
+			return nil, errors.New("Could not verify id_token")
+		}
+
+		// Get Email from idToken
+		var claims struct {
+			Email string `json:"email"`
+		}
+
+		if err := idToken.Claims(&claims); err != nil {
+			return &User{ID: idToken.Subject, EmailVerified: true}, nil
+		}
+
+		return &User{ID: idToken.Subject, Email: claims.Email, EmailVerified: true}, nil
+
+	}
+
+	tokenSource := oauthConfig.TokenSource(oauth2.NoContext, token)
+	userInfo, err := provider.UserInfo(oauth2.NoContext, tokenSource)
+	if err != nil {
+		r.Logger.Error().Err(err).Str("code", oauthDetails.Code).Interface("config", oauthConfig).Interface("token", token).Msg("Fetching UserInfo Failed")
+		return nil, err
+	}
+
+	return &User{
+		ID:            userInfo.Subject,
+		Name:          userInfo.Profile,
+		Email:         userInfo.Email,
+		EmailVerified: userInfo.EmailVerified,
+	}, nil
 }
