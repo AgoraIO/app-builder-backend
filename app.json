@@ -16,13 +16,49 @@
         "APP_CERTIFICATE": {
             "description": "App Certificate is used by Agora to generate tokens for security. Here's how to get your app certificate: https://docs.agora.io/en/Agora%20Platform/token?platform=All%20Platforms#generate-a-token"
         },
-        "CLIENT_ID": {
-            "description": "Client ID used for OAuth",
+        "GOOGLE_CLIENT_ID": {
+            "description": "Client ID used for Google OAuth",
             "required": false
         },
-        "CLIENT_SECRET": {
-            "description": "Client Secret used for OAuth",
+        "GOOGLE_CLIENT_SECRET": {
+            "description": "Client Secret used for Google OAuth",
             "required": false
+        },
+        "MICROSOFT_CLIENT_ID": {
+            "description": "Client ID used for Microsoft OAuth",
+            "required": false
+        },
+        "MICROSOFT_CLIENT_SECRET": {
+            "description": "Client Secret used for Microsoft OAuth",
+            "required": false
+        },
+        "SLACK_CLIENT_ID": {
+            "description": "Client ID used for Slack OAuth",
+            "required": false
+        },
+        "SLACK_CLIENT_SECRET": {
+            "description": "Client Secret used for Slack OAuth",
+            "required": false
+        },
+        "APPLE_CLIENT_ID": {
+            "description": "Client ID used for Apple OAuth",
+            "required": false
+        },
+        "APPLE_PRIVATE_KEY": {
+            "description": "Private Key used for Apple OAuth",
+            "required": false
+        },
+        "APPLE_KEY_ID": {
+            "description": "Key ID used for Apple OAuth",
+            "required": false
+        },
+        "APPLE_TEAM_ID": {
+            "description": "Team ID used for Apple OAuth",
+            "required": false
+        },
+        "ENCRYPTION_ENABLED": {
+            "description": "Whether to enable encryption or not",
+            "required": true
         },
         "CUSTOMER_ID": {
             "description": "Required for Cloud Recording. How to get your credentials: https://docs.agora.io/en/faq/restful_authentication",
@@ -48,12 +84,16 @@
             "description": "Enter your AWS Access secret. Required for Cloud Recording.",
             "required": false
         },
-        "PSTN_USERNAME": {
-            "description": "Username of your Turbobridge account. Required for PSTN Integration",
+        "PSTN_EMAIL": {
+            "description": "Email ID of your Turbobridge account. Required for PSTN Integration",
             "required": false
         },
         "PSTN_PASSWORD": {
             "description": "Password of your Turbobridge account. Required for PSTN Integration",
+            "required": false
+        },
+        "PSTN_ACCOUNT": {
+            "description": "Account ID of your Turbobridge account. Required for PSTN Integration",
             "required": false
         },
         "SCHEME": {
