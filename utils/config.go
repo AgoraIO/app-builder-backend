@@ -19,7 +19,11 @@ func SetDefaults() {
 	viper.SetDefault("PORT", "8080")
 	viper.SetDefault("MIGRATION_SOURCE", "file://db/migrations") // Will be used in the future
 	viper.SetDefault("ALLOWED_ORIGIN", "*")
-	viper.SetDefault("ENABLE_OAUTH", true)
+	viper.SetDefault("ENABLE_OAUTH", false)
+	viper.SetDefault("ENABLE_GOOGLE_OAUTH", false)
+	viper.SetDefault("ENABLE_APPLE_OAUTH", false)
+	viper.SetDefault("ENABLE_MICROSOFT_OAUTH", false)
+	viper.SetDefault("ENABLE_SLACK_OAUTH", false)
 	viper.SetDefault("ENABLE_CONSOLE_LOGGING", true)
 	viper.SetDefault("ENABLE_FILE_LOGGING", true)
 	viper.SetDefault("LOG_LEVEL", "DEBUG")
@@ -38,6 +42,22 @@ func SetDefaults() {
 
 	if viper.GetString("ENABLE_OAUTH") == "false" {
 		viper.Set("ENABLE_OAUTH", false)
+	}
+
+	if viper.GetString("ENABLE_GOOGLE_OAUTH") == "true" {
+		viper.SetDefault("ENABLE_GOOGLE_OAUTH", true)
+	}
+
+	if viper.GetString("ENABLE_APPLE_OAUTH") == "true" {
+		viper.SetDefault("ENABLE_APPLE_OAUTH", true)
+	}
+
+	if viper.GetString("ENABLE_MICROSOFT_OAUTH") == "true" {
+		viper.SetDefault("ENABLE_MICROSOFT_OAUTH", true)
+	}
+
+	if viper.GetString("ENABLE_SLACK_OAUTH") == "true" {
+		viper.SetDefault("ENABLE_SLACK_OAUTH", true)
 	}
 
 	if viper.GetString("ALLOWED_ORIGIN") == "" {
@@ -62,6 +82,10 @@ func SetupConfig(configDir *string) error {
 	}
 
 	viper.AutomaticEnv()
+
+	if viper.GetBool("ENABLE_SLACK_OAUTH") || viper.GetBool("ENABLE_GOOGLE_OAUTH") || viper.GetBool("ENABLE_APPLE_OAUTH") || viper.GetBool("ENABLE_MICROSOFT_OAUTH") {
+		viper.SetDefault("ENABLE_OAUTH", true)
+	}
 
 	SetDefaults()
 

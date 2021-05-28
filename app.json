@@ -16,12 +16,20 @@
         "APP_CERTIFICATE": {
             "description": "App Certificate is used by Agora to generate tokens for security. Here's how to get your app certificate: https://docs.agora.io/en/Agora%20Platform/token?platform=All%20Platforms#generate-a-token"
         },
+        "ENABLE_GOOGLE_OAUTH": {
+            "description": "Boolean to enable Google OAuth",
+            "required": false
+        },
         "GOOGLE_CLIENT_ID": {
             "description": "Client ID used for Google OAuth",
             "required": false
         },
         "GOOGLE_CLIENT_SECRET": {
             "description": "Client Secret used for Google OAuth",
+            "required": false
+        },
+        "ENABLE_MICROSOFT_OAUTH": {
+            "description": "Boolean to enable Microsoft OAuth",
             "required": false
         },
         "MICROSOFT_CLIENT_ID": {
@@ -32,12 +40,20 @@
             "description": "Client Secret used for Microsoft OAuth",
             "required": false
         },
+        "ENABLE_SLACK_OAUTH": {
+            "description": "Boolean to enable Slack OAuth",
+            "required": false
+        },
         "SLACK_CLIENT_ID": {
             "description": "Client ID used for Slack OAuth",
             "required": false
         },
         "SLACK_CLIENT_SECRET": {
             "description": "Client Secret used for Slack OAuth",
+            "required": false
+        },
+        "ENABLE_APPLe_OAUTH": {
+            "description": "Boolean to enable Apple OAuth",
             "required": false
         },
         "APPLE_CLIENT_ID": {
@@ -98,10 +114,6 @@
         },
         "SCHEME": {
             "description": "Contains project name. Used for deep links",
-            "required": true
-        },
-        "ENABLE_OAUTH": {
-            "description": "Boolean. If OAuth needs to be enabled",
             "required": true
         }
     }
