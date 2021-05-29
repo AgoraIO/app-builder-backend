@@ -74,7 +74,7 @@
         },
         "ENCRYPTION_ENABLED": {
             "description": "Whether to enable encryption or not",
-            "required": true
+            "required": false
         },
         "CUSTOMER_ID": {
             "description": "Required for Cloud Recording. How to get your credentials: https://docs.agora.io/en/faq/restful_authentication",
