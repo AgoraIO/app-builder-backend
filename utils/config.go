@@ -31,6 +31,7 @@ func SetDefaults() {
 	viper.SetDefault("RECORDING_VENDOR", 1)
 	viper.SetDefault("RECORDING_REGION", 0)
 	viper.SetDefault("RUN_MIGRATION", false)
+	viper.SetDefault("PSTN_NUMBER", "(800) 309-2350")
 
 	if viper.GetString("RUN_MIGRATION") == "true" {
 		viper.SetDefault("RUN_MIGRATION", true)

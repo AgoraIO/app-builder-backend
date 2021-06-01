@@ -48,6 +48,9 @@ func main() {
 		ConsoleLoggingEnabled: viper.GetBool("ENABLE_CONSOLE_LOGGING"),
 		FileLoggingEnabled:    viper.GetBool("ENABLE_FILE_LOGGING"),
 		Directory:             viper.GetString("LOG_DIR"),
+		MaxSize:               viper.GetInt("MAX_LOG_SIZE"),
+		MaxBackups:            viper.GetInt("MAX_LOG_BACKUP"),
+		MaxAge:                viper.GetInt("MAX_LOG_AGE"),
 		Filename:              "app-builder-logs",
 	})
 

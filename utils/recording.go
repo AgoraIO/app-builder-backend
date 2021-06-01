@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -19,6 +18,7 @@ type Recorder struct {
 	UID     int32
 	RID     string
 	SID     string
+	Logger  *Logger
 }
 
 type AcquireClientRequest struct {
@@ -88,7 +88,7 @@ func (rec *Recorder) Acquire() error {
 
 	requestBody, err := json.Marshal(&AcquireRequest{
 		Cname: rec.Channel,
-		UID:   string(rec.UID),
+		UID:   strconv.Itoa(int(rec.UID)),
 		ClientRequest: AcquireClientRequest{
 			ResourceExpiredHour: 24,
 		},
@@ -114,6 +114,8 @@ func (rec *Recorder) Acquire() error {
 	json.NewDecoder(resp.Body).Decode(&result)
 
 	rec.RID = result["resourceId"]
+
+	rec.Logger.Debug().Interface("Result", result).Msg("Recording Result")
 
 	return nil
 }
@@ -157,9 +159,9 @@ func (rec *Recorder) Start(channelTitle string, secret *string) error {
 		}
 	}
 
-	requestBody, err := json.Marshal(&StartRecordRequest{
+	recordingRequest := StartRecordRequest{
 		Cname: rec.Channel,
-		UID:   string(rec.UID),
+		UID:   strconv.Itoa(int(rec.UID)),
 		ClientRequest: ClientRequest{
 			Token: rec.Token,
 			StorageConfig: StorageConfig{
@@ -177,7 +179,11 @@ func (rec *Recorder) Start(channelTitle string, secret *string) error {
 			},
 			RecordingConfig: recordingConfig,
 		},
-	})
+	}
+
+	rec.Logger.Info().Interface("Start Request", recordingRequest).Msg("Recording request")
+
+	requestBody, err := json.Marshal(&recordingRequest)
 	if err != nil {
 		return err
 	}
@@ -202,6 +208,8 @@ func (rec *Recorder) Start(channelTitle string, secret *string) error {
 	json.NewDecoder(resp.Body).Decode(&result)
 	rec.SID = result["sid"]
 
+	rec.Logger.Debug().Interface("Result", result).Msg("Recording Result")
+
 	return nil
 }
 
@@ -211,7 +219,7 @@ type UpdateRecordRequest struct {
 	ClientRequest TranscodingConfig `json:"clientRequest"`
 }
 
-func ChangeRecordingMode(channel string, uid int, rid string, sid string, mode int, maxUID string) error {
+func ChangeRecordingMode(channel string, uid int, rid string, sid string, mode int, maxUID string, logger *Logger) error {
 	requestBody, err := json.Marshal(&UpdateRecordRequest{
 		Cname: channel,
 		UID:   strconv.Itoa(uid),
@@ -245,14 +253,14 @@ func ChangeRecordingMode(channel string, uid int, rid string, sid string, mode i
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	log.Info().Interface("response", result).Msg("Update Cloud Recording Response")
+	logger.Info().Interface("response", result).Msg("Update Cloud Recording Response")
 
 	return nil
 
 }
 
 // Stop stops the cloud recording
-func Stop(channel string, uid int, rid string, sid string) error {
+func Stop(channel string, uid int, rid string, sid string, logger *Logger) error {
 	requestBody, err := json.Marshal(&AcquireRequest{
 		Cname:         channel,
 		UID:           strconv.Itoa(uid),
@@ -279,7 +287,7 @@ func Stop(channel string, uid int, rid string, sid string) error {
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	log.Info().Interface("response", result).Msg("Stop Cloud Recording Response")
+	logger.Info().Interface("response", result).Msg("Stop Cloud Recording Response")
 
 	return nil
 }

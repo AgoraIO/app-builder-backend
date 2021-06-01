@@ -34,7 +34,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		}
 	}
 
-	var pstnResponse *models.Pstn
+	// var pstnResponse *models.Pstn
 	var newChannel *models.Channel
 
 	hostPhrase, err := utils.GenerateUUID()
@@ -117,7 +117,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		},
 		Title:   title,
 		Channel: channel,
-		Pstn:    pstnResponse,
+		Pstn:    nil,
 	}, nil
 }
 
@@ -187,7 +187,7 @@ func (r *mutationResolver) SetPresenter(ctx context.Context, uid int, passphrase
 		return 0, errors.New("Recording not started")
 	}
 
-	err = utils.ChangeRecordingMode(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String, 2, strconv.Itoa(uid))
+	err = utils.ChangeRecordingMode(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String, 2, strconv.Itoa(uid), r.Logger)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Stop recording failed")
 		return 0, errInternalServer
@@ -226,7 +226,7 @@ func (r *mutationResolver) SetNormal(ctx context.Context, passphrase string) (st
 		return "", errors.New("Recording not started")
 	}
 
-	err = utils.ChangeRecordingMode(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String, 1, "")
+	err = utils.ChangeRecordingMode(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String, 1, "", r.Logger)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Stop recording failed")
 		return "", errInternalServer
@@ -323,7 +323,9 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 
 	finalTitle := utils.FirstN(reg.ReplaceAllString(title, ""), 100)
 
-	recorder := &utils.Recorder{}
+	recorder := &utils.Recorder{
+		Logger: r.Logger,
+	}
 	recorder.Channel = channelData.ChannelName
 
 	err = recorder.Acquire()
@@ -387,7 +389,7 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 		return "", errors.New("Recording not started")
 	}
 
-	err = utils.Stop(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String)
+	err = utils.Stop(channelData.ChannelName, int(channelData.RecordingUID.Int32), channelData.RecordingRID.String, channelData.RecordingSID.String, r.Logger)
 	if err != nil {
 		r.Logger.Error().Err(err).Msg("Stop recording failed")
 		return "", errInternalServer
