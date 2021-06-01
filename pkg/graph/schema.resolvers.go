@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enablePstn *bool) (*models.ShareResponse, error) {
+func (r *mutationResolver) CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool) (*models.ShareResponse, error) {
 	r.Logger.Info().Str("mutation", "CreateChannel").Str("title", title).Msg("Creating Channel")
 	if enablePstn != nil {
 		r.Logger.Info().Bool("enablePstn", *enablePstn).Msg("")
@@ -68,31 +68,31 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, enab
 		return nil, errInternalServer
 	}
 
-	// if *enablePstn {
-	// 	if len(backendURL) <= 0 {
-	// 		r.Logger.Error().Str("backend", backendURL).Msg("Backend URL is empty")
-	// 		return nil, errors.New("Backend URL is empty")
-	// 	}
+	if *enablePstn {
+		if len(backendURL) <= 0 {
+			r.Logger.Error().Str("backend", backendURL).Msg("Backend URL is empty")
+			return nil, errors.New("Backend URL is empty")
+		}
 
-	// 	// TODO: Refactor to remove duplicate code
-	// 	// Remove trailing slash from URL
-	// 	runeBackendURL := []rune(backendURL)
-	// 	if runeBackendURL[len(runeBackendURL)-1] == '/' {
-	// 		runeBackendURL = runeBackendURL[:len(runeBackendURL)-1]
-	// 	}
+		// TODO: Refactor to remove duplicate code
+		// Remove trailing slash from URL
+		runeBackendURL := []rune(backendURL)
+		if runeBackendURL[len(runeBackendURL)-1] == '/' {
+			runeBackendURL = runeBackendURL[:len(runeBackendURL)-1]
+		}
 
-	// 	finalBackendURL := string(runeBackendURL)
+		finalBackendURL := string(runeBackendURL)
 
-	// 	services.CreateBridge(r.Logger, *dtmfResult, finalBackendURL)
-	// 	pstnResponse = &models.Pstn{
-	// 		Number: viper.GetString("PSTN_NUMBER"),
-	// 		Dtmf:   *dtmfResult,
-	// 	}
+		services.CreateBridge(r.Logger, *dtmfResult, finalBackendURL)
+		pstnResponse = &models.Pstn{
+			Number: viper.GetString("PSTN_NUMBER"),
+			Dtmf:   *dtmfResult,
+		}
 
-	// 	r.Logger.Info().Str("DTMF", *dtmfResult).Msg("PSTN PIN")
-	// } else {
-	// 	pstnResponse = nil
-	// }
+		r.Logger.Info().Str("DTMF", *dtmfResult).Msg("PSTN PIN")
+	} else {
+		pstnResponse = nil
+	}
 
 	newChannel = &models.Channel{
 		Title:            title,
