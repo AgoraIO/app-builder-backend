@@ -220,14 +220,18 @@ type UpdateRecordRequest struct {
 }
 
 func ChangeRecordingMode(channel string, uid int, rid string, sid string, mode int, maxUID string, logger *Logger) error {
-	requestBody, err := json.Marshal(&UpdateRecordRequest{
+	recordingRequest := UpdateRecordRequest{
 		Cname: channel,
 		UID:   strconv.Itoa(uid),
 		ClientRequest: TranscodingConfig{
 			MixedVideoLayout: mode,
 			MaxResolutionUID: maxUID,
 		},
-	})
+	}
+
+	logger.Info().Interface("Change Recording", recordingRequest).Msg("Change Recording Mode")
+
+	requestBody, err := json.Marshal(&recordingRequest)
 
 	if err != nil {
 		return err
@@ -261,11 +265,15 @@ func ChangeRecordingMode(channel string, uid int, rid string, sid string, mode i
 
 // Stop stops the cloud recording
 func Stop(channel string, uid int, rid string, sid string, logger *Logger) error {
-	requestBody, err := json.Marshal(&AcquireRequest{
+	recordingRequest := AcquireRequest{
 		Cname:         channel,
 		UID:           strconv.Itoa(uid),
 		ClientRequest: AcquireClientRequest{},
-	})
+	}
+
+	logger.Info().Interface("Stop Request", recordingRequest).Msg("Stop Recording Request")
+
+	requestBody, err := json.Marshal(&recordingRequest)
 
 	req, err := http.NewRequest("POST", "https://api.agora.io/v1/apps/"+viper.GetString("APP_ID")+"/cloud_recording/resourceid/"+rid+"/sid/"+sid+"/mode/mix/stop",
 		bytes.NewBuffer([]byte(requestBody)))

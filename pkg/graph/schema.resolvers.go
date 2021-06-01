@@ -160,23 +160,13 @@ func (r *mutationResolver) MutePstn(ctx context.Context, uid int, passphrase str
 func (r *mutationResolver) SetPresenter(ctx context.Context, uid int, passphrase string) (int, error) {
 	r.Logger.Info().Str("mutation", "SetPresenter").Str("passphrase", passphrase).Int("uid", uid).Msg("")
 
-	if !viper.GetBool("ENABLE_OAUTH") {
-		return 0, nil
-	}
-
-	_, err := middleware.GetUserFromContext(ctx)
-	if err != nil {
-		r.Logger.Debug().Msg("Invalid Token")
-		return 0, errors.New("Invalid Token")
-	}
-
 	if passphrase == "" {
 		return 0, errors.New("Passphrase cannot be empty")
 	}
 
 	var channelData models.Channel
 
-	err = r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase, recording_rid, recording_sid, recording_uid FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase, recording_rid, recording_sid, recording_uid FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
 		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return 0, errors.New("Invalid URL")
@@ -199,23 +189,13 @@ func (r *mutationResolver) SetPresenter(ctx context.Context, uid int, passphrase
 func (r *mutationResolver) SetNormal(ctx context.Context, passphrase string) (string, error) {
 	r.Logger.Info().Str("mutation", "SetPresenter").Str("passphrase", passphrase).Msg("")
 
-	if !viper.GetBool("ENABLE_OAUTH") {
-		return "", nil
-	}
-
-	_, err := middleware.GetUserFromContext(ctx)
-	if err != nil {
-		r.Logger.Debug().Msg("Invalid Token")
-		return "", errors.New("Invalid Token")
-	}
-
 	if passphrase == "" {
 		return "", errors.New("Passphrase cannot be empty")
 	}
 
 	var channelData models.Channel
 
-	err = r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase, recording_rid, recording_sid, recording_uid FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	err := r.DB.Get(&channelData, "SELECT id, title, channel_name, channel_secret, host_passphrase, viewer_passphrase, recording_rid, recording_sid, recording_uid FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
 		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return "", errors.New("Invalid URL")
