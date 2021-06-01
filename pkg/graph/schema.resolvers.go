@@ -83,9 +83,16 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, back
 
 		finalBackendURL := string(runeBackendURL)
 
+		var pstnNumber string
+		if viper.GetString("PSTN_NUMBER") == "" {
+			pstnNumber = "(800) 309-2350"
+		} else {
+			pstnNumber = viper.GetString("PSTN_NUMBER")
+		}
+
 		services.CreateBridge(r.Logger, *dtmfResult, finalBackendURL)
 		pstnResponse = &models.Pstn{
-			Number: viper.GetString("PSTN_NUMBER"),
+			Number: pstnNumber,
 			Dtmf:   *dtmfResult,
 		}
 
