@@ -47,7 +47,7 @@ type Query {
 }
 
 type Mutation {
-  createChannel(title: String!, backendURL: String!, enablePSTN: Boolean = false): ShareResponse!
+  createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
   mutePSTN(uid: Int!, passphrase: String!, mute: Boolean = true): UIDMuteState!
   setPresenter(uid: Int!, passphrase: String!): Int!
   setNormal(passphrase: String!): String!

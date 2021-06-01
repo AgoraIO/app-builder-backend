@@ -44,7 +44,7 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateChannel         func(childComplexity int, title string, backendURL string, enablePstn *bool) int
+		CreateChannel         func(childComplexity int, title string, enablePstn *bool) int
 		LogoutSession         func(childComplexity int, token string) int
 		MutePstn              func(childComplexity int, uid int, passphrase string, mute *bool) int
 		SetNormal             func(childComplexity int, passphrase string) int
@@ -104,7 +104,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool) (*models.ShareResponse, error)
+	CreateChannel(ctx context.Context, title string, enablePstn *bool) (*models.ShareResponse, error)
 	MutePstn(ctx context.Context, uid int, passphrase string, mute *bool) (*models.UIDMuteState, error)
 	SetPresenter(ctx context.Context, uid int, passphrase string) (int, error)
 	SetNormal(ctx context.Context, passphrase string) (string, error)
@@ -144,7 +144,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateChannel(childComplexity, args["title"].(string), args["backendURL"].(string), args["enablePSTN"].(*bool)), true
+		return e.complexity.Mutation.CreateChannel(childComplexity, args["title"].(string), args["enablePSTN"].(*bool)), true
 
 	case "Mutation.logoutSession":
 		if e.complexity.Mutation.LogoutSession == nil {
@@ -521,7 +521,7 @@ type Query {
 }
 
 type Mutation {
-  createChannel(title: String!, backendURL: String!, enablePSTN: Boolean = false): ShareResponse!
+  createChannel(title: String!, enablePSTN: Boolean = false): ShareResponse!
   mutePSTN(uid: Int!, passphrase: String!, mute: Boolean = true): UIDMuteState!
   setPresenter(uid: Int!, passphrase: String!): Int!
   setNormal(passphrase: String!): String!
@@ -549,24 +549,15 @@ func (ec *executionContext) field_Mutation_createChannel_args(ctx context.Contex
 		}
 	}
 	args["title"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["backendURL"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backendURL"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["backendURL"] = arg1
-	var arg2 *bool
+	var arg1 *bool
 	if tmp, ok := rawArgs["enablePSTN"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enablePSTN"))
-		arg2, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["enablePSTN"] = arg2
+	args["enablePSTN"] = arg1
 	return args, nil
 }
 
@@ -819,7 +810,7 @@ func (ec *executionContext) _Mutation_createChannel(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateChannel(rctx, args["title"].(string), args["backendURL"].(string), args["enablePSTN"].(*bool))
+		return ec.resolvers.Mutation().CreateChannel(rctx, args["title"].(string), args["enablePSTN"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
