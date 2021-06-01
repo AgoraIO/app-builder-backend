@@ -34,7 +34,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, back
 		}
 	}
 
-	// var pstnResponse *models.Pstn
+	var pstnResponse *models.Pstn
 	var newChannel *models.Channel
 
 	hostPhrase, err := utils.GenerateUUID()
@@ -117,7 +117,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, back
 		},
 		Title:   title,
 		Channel: channel,
-		Pstn:    nil,
+		Pstn:    pstnResponse,
 	}, nil
 }
 
