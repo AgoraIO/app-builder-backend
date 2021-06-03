@@ -520,9 +520,16 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*models.S
 	}
 
 	var pstnResult *models.Pstn
+	var pstnNumber string
+	if viper.GetString("PSTN_NUMBER") == "" {
+		pstnNumber = "(800) 309-2350"
+	} else {
+		pstnNumber = viper.GetString("PSTN_NUMBER")
+	}
+
 	if channelData.DTMF != "" {
 		pstnResult = &models.Pstn{
-			Number: viper.GetString("PSTN_NUMBER"),
+			Number: pstnNumber,
 			Dtmf:   channelData.DTMF,
 		}
 	} else {
