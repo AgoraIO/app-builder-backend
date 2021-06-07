@@ -22,7 +22,7 @@ Pull Requests will reviewed by a maintainer and will be merged if he/she approve
 
 ## Fixing Documentation
 
-Our Docs currently reside at https://github.com/AgoraIO-Community/app-builder-docs/wiki. Please raise an issue if you find any issues with the documentation.
+Our Docs currently reside at https://appbuilder.agora.io/docs. Please feel free to raise an issue if you find any issues with the documentation.
 It can be something as simple as a spelling/grammatical error or confusing language. 
 
 ## Contributing Content
