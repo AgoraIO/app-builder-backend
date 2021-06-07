@@ -1,11 +1,20 @@
+// ********************************************
+// Copyright © 2021 Agora Lab, Inc., all rights reserved.
+// AppBuilder and all associated components, source code, APIs, services, and documentation
+// (the “Materials”) are owned by Agora Lab, Inc. and its licensors.  The Materials may not be
+// accessed, used, modified, or distributed for any purpose without a license from Agora Lab, Inc.
+// Use without a license or in violation of any license terms and conditions (including use for
+// any purpose competitive to Agora Lab, Inc.’s business) is strictly prohibited.  For more
+// information visit https://appbuilder.agora.io.
+// *********************************************
+
 package utils
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
-	"github.com/samyak-jain/agora_backend/graph/model"
+	"github.com/samyak-jain/agora_backend/pkg/models"
 	"github.com/samyak-jain/agora_backend/utils/rtctoken"
 	"github.com/samyak-jain/agora_backend/utils/rtmtoken"
 	"github.com/spf13/viper"
@@ -31,15 +40,22 @@ func GetRtmToken(user string) (string, error) {
 }
 
 // GenerateUserCredentials generates uid, rtc and rtc token
-func GenerateUserCredentials(channel string, rtm bool) (*model.UserCredentials, error) {
-	uid := int(rand.Uint32())
+func GenerateUserCredentials(channel string, rtm bool, pstn bool) (*models.UserCredentials, error) {
+	initialUID := RandomRange(10000000, 99999999)
+	var uid int
+	if pstn {
+		uid = initialUID + 100000000
+	} else {
+		uid = initialUID + 200000000
+	}
+
 	rtcToken, err := GetRtcToken(channel, uid)
 	if err != nil {
 		return nil, err
 	}
 
 	if !rtm {
-		return &model.UserCredentials{
+		return &models.UserCredentials{
 			Rtc: rtcToken,
 			UID: uid,
 		}, nil
@@ -50,7 +66,7 @@ func GenerateUserCredentials(channel string, rtm bool) (*model.UserCredentials, 
 		return nil, err
 	}
 
-	return &model.UserCredentials{
+	return &models.UserCredentials{
 		Rtc: rtcToken,
 		Rtm: &rtmToken,
 		UID: uid,

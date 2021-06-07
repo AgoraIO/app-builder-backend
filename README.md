@@ -3,9 +3,8 @@
 <div align="center">
 
   [![Status](https://img.shields.io/badge/status-active-success.svg)]() 
-  [![GitHub Issues](https://img.shields.io/github/issues/samyak-jain/AgoraBackend.svg)](https://github.com/samyak-jain/AgoraBackend/issues)
-  [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/samyak-jain/AgoraBackend.svg)](https://github.com/samyak-jain/AgoraBackend/pulls)
-  [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
+  [![GitHub Issues](https://img.shields.io/github/issues/AgoraIO/app-builder-backend.svg)](https://github.com/AgoraIO/app-builder-backend/issues)
+  [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/AgoraIO/app-builder-backend.svg)](https://github.com/AgoraIO/app-builder-backend/pulls)
 
 </div>
 
@@ -20,25 +19,19 @@
 - [Getting Started](#getting_started)
 - [Deployment](#deployment)
 - [Built Using](#built_using)
-- [Authors](#authors)
 
 ## 🧐 About <a name = "about"></a>
 Build your own RTE experience instantly! Visit https://appbuilder.agora.io/.
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
-To get started with this project. Refer to the docs here: https://github.com/AgoraIO-Community/app-builder-docs/wiki
+To get started with this project. Refer to the docs here: https://appbuilder.agora.io/docs
 
 ## 🚀 Deployment <a name = "deployment"></a>
 
 ### 1 Click Deployment Using Heroku
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/samyak-jain/AgoraBackend)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/AgoraIO/app-builder-backend)
 
 ## ⛏️ Built Using <a name = "built_using"></a>
 - [PostgreSQL](https://www.postgresql.org/) - Database
 - [GraphQL](https://graphql.org/) - Query Language
 - [GoLang](https://golang.org/) - Server Environment
-
-## ✍️ Authors <a name = "authors"></a>
-- [@samyak-jain](https://github.com/samyak-jain)
-
-See also the list of [contributors](https://github.com/samyak-jain/AgoraBackend/contributors) who participated in this project.

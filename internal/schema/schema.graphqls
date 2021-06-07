@@ -1,0 +1,58 @@
+type Passphrase {
+  host: String
+  view: String!
+}
+
+type PSTN {
+  number: String!
+  dtmf: String!
+}
+
+type ShareResponse {
+  passphrase: Passphrase!
+  channel: String!
+  title: String!
+  pstn: PSTN
+}
+
+type UserCredentials {
+  rtc: String!
+  rtm: String
+  uid: Int!
+}
+
+type Session { 
+  channel: String!
+  title: String!
+  isHost: Boolean!
+  secret: String!
+  mainUser: UserCredentials!
+  screenShare: UserCredentials!
+}
+
+type User {
+  name: String!
+  email: String!
+}
+
+type UIDMuteState {
+  uid: Int!
+  mute: Boolean!
+}
+
+type Query {
+  joinChannel(passphrase: String!): Session!
+  share(passphrase: String!): ShareResponse!
+  getUser: User!
+}
+
+type Mutation {
+  createChannel(title: String!, backendURL: String!, enablePSTN: Boolean = false): ShareResponse!
+  mutePSTN(uid: Int!, passphrase: String!, mute: Boolean = true): UIDMuteState!
+  setPresenter(uid: Int!, passphrase: String!): Int!
+  setNormal(passphrase: String!): String!
+  updateUserName(name: String!): User!
+  startRecordingSession(passphrase: String!, secret: String): String!
+  stopRecordingSession(passphrase: String!): String!
+  logoutSession(token: String!): [String!]
+}
