@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/10133258/120986333-1b30b500-c79a-11eb-99ba-77120f4c59f1.png" alt="Agora App Builder"/>
+</p>
+
 <h3 align="center">Agora App Builder - Backend</h3>
 
 <div align="center">
