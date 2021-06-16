@@ -20,5 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/
 FROM scratch
 COPY --from=build-env /go/bin/server /go/bin/server
 COPY --from=build-env /server/config.json config.json
+COPY --from=build-env /server/migrations migrations
+
 
 ENTRYPOINT ["/go/bin/server"]
