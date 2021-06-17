@@ -551,13 +551,17 @@ func (r *queryResolver) GetUser(ctx context.Context) (*models.User, error) {
 	r.Logger.Info().Str("query", "GetUser").Msg("")
 
 	if !viper.GetBool("ENABLE_OAUTH") {
-		return nil, nil
+		return &models.User{
+			Name: "",
+		}, nil
 	}
 
 	authUser, err := middleware.GetUserFromContext(ctx)
 	if err != nil {
 		r.Logger.Debug().Msg("Invalid Token")
-		return nil, errors.New("Invalid Token")
+		return &models.User{
+			Name: "",
+		}, errors.New("Invalid Token")
 	}
 
 	if !authUser.UserName.Valid {
