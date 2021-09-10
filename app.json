@@ -52,7 +52,7 @@
             "description": "Client Secret used for Slack OAuth",
             "required": false
         },
-        "ENABLE_APPLe_OAUTH": {
+        "ENABLE_APPLE_OAUTH": {
             "description": "Boolean to enable Apple OAuth",
             "required": false
         },
