@@ -1,4 +1,6 @@
 #!/bin/bash
-
-GOARCH=amd64 GOOS=linux go build -o appBuilderCore ../cmd/video_conferencing/server.go 
-tar czfv appBuilderCore.tgz ./appBuilderCore
+mkdir app 
+cd app
+GOARCH=amd64 GOOS=linux go build ../../cmd/video_conferencing/server.go 
+cd ..
+tar czfv slug.tgz ./app

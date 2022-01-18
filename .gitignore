@@ -23,4 +23,5 @@ data/
 # log directory
 logs/
 
-scripts/appBuilderCore*
+scripts/app
+scripts/slug.tgz
