@@ -22,3 +22,5 @@ data/
 
 # log directory
 logs/
+
+scripts/appBuilderCore*
