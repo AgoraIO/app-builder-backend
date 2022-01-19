@@ -10,12 +10,12 @@ pipeline {
             steps {
 				checkout scm
 				script {
-                    sh "rm -rf slug.tgz"
-                    sh "aws s3 cp s3://agora-app-builder-backend-go-builds/slug.tgz ."
-                    sh "mv slug.tgz previous_slug.tgz"
-                    sh "aws s3 cp previous_slug.tgz s3://agora-app-builder-backend-go-builds/previous_slug.tgz"
-                    sh "rm -rf slug.tgz"
-                    sh "rm -rf previous_slug.tgz"
+                    sh "rm -rf slug.tgz || echo 'slug.tgz not present' "
+                    sh "aws s3 cp s3://agora-app-builder-backend-go-builds/slug.tgz . || echo 'slug.tgz not present' "
+                    sh "mv slug.tgz slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
+                    sh "aws s3 cp slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz s3://agora-app-builder-backend-go-builds/slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
+                    sh "rm -rf slug.tgz || echo 'slug.tgz not present' "
+                    sh "rm -rf slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
                     }
                 }
             }
