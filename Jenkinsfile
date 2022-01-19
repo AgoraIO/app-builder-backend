@@ -30,10 +30,11 @@ pipeline {
 				checkout scm
 				script {
                     sh "pwd"
-					sh " chmod 777 scripts/create_slugs.sh"
-					sh " ls -la"
+					sh "chmod 777 scripts/create_slugs.sh"
+					sh "ls -la"
 					sh "scripts/create_slugs.sh"
-                    sh " ls -la"
+                    sh "ls -la"
+                    sh "ls -la ./app/"
                     }
                 }
             }
@@ -54,5 +55,4 @@ pipeline {
             }
 		}
     }
-
 }
