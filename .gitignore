@@ -23,5 +23,5 @@ data/
 # log directory
 logs/
 
-scripts/app
-scripts/slug.tgz
+app
+slug.tgz
