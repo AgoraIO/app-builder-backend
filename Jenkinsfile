@@ -3,9 +3,7 @@ pipeline {
     stages {
         stage('backup slug') {
             when {
-			    not {
-                    branch 'master'
-                    }
+                branch 'master'
 		    }
             steps {
 				checkout scm
@@ -42,10 +40,8 @@ pipeline {
 
 		stage('push to s3') {
             when {
-                not {
-                    branch 'master'
-                    }
-            }
+                branch 'master'
+		    }
             steps {
                 script {
                 // sh "aws s3api put-object --bucket agora-app-builder-backend-go-builds --key ${BUILD_NUMBER}"
