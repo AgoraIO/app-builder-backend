@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('build slug') {
 		when {
-			branch 'feature/slugs'
+			branch "feature/*"
 		}
             steps {
 				checkout scm
@@ -20,7 +20,7 @@ pipeline {
 
 		stage('push to s3') {
 		when {
-			branch 'feature/slugs'
+			branch "feature/*"
 		}
 		steps {
 			script {
