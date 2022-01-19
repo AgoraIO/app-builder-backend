@@ -20,9 +20,7 @@ pipeline {
 
         stage('build slug') {
             when {
-                not {
-                    branch 'master'
-                    }
+                branch 'master'
             }
             steps {
 				checkout scm
