@@ -22,3 +22,6 @@ data/
 
 # log directory
 logs/
+
+app
+slug.tgz
