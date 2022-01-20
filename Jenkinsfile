@@ -1,19 +1,36 @@
 pipeline {
     agent any
     stages {
-        stage('backup slug') {
+        stage('backup slug-dev') {
             when {
-			    not {
+                not{
                     branch 'master'
-                    }
+                }
 		    }
             steps {
 				checkout scm
 				script {
                     sh "rm -rf slug.tgz || echo 'slug.tgz not present' "
-                    sh "aws s3 cp s3://agora-app-builder-backend-go-builds/slug.tgz . || echo 'slug.tgz not present' "
+                    sh "aws s3 cp s3://agora-app-builder-backend-go-builds/dev/slug.tgz . || echo 'slug.tgz not present' "
                     sh "mv slug.tgz slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
-                    sh "aws s3 cp slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz s3://agora-app-builder-backend-go-builds/slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
+                    sh "aws s3 cp slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz s3://agora-app-builder-backend-go-builds/dev/slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
+                    sh "rm -rf slug.tgz || echo 'slug.tgz not present' "
+                    sh "rm -rf slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
+                    }
+                }
+            }
+
+        stage('backup slug-staging') {
+            when {
+                branch 'master'
+		    }
+            steps {
+				checkout scm
+				script {
+                    sh "rm -rf slug.tgz || echo 'slug.tgz not present' "
+                    sh "aws s3 cp s3://agora-app-builder-backend-go-builds/staging/slug.tgz . || echo 'slug.tgz not present' "
+                    sh "mv slug.tgz slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
+                    sh "aws s3 cp slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz s3://agora-app-builder-backend-go-builds/staging/slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
                     sh "rm -rf slug.tgz || echo 'slug.tgz not present' "
                     sh "rm -rf slug_${BUILD_NUMBER}_${BUILD_TIMESTAMP}.tgz || echo 'slug.tgz not present' "
                     }
@@ -21,11 +38,6 @@ pipeline {
             }
 
         stage('build slug') {
-            when {
-                not {
-                    branch 'master'
-                    }
-            }
             steps {
 				checkout scm
 				script {
@@ -40,16 +52,27 @@ pipeline {
             }
 
 
-		stage('push to s3') {
+		stage('push to s3-dev') {
             when {
-                not {
+                not{
                     branch 'master'
-                    }
-            }
+                }
+		    }
             steps {
                 script {
-                // sh "aws s3api put-object --bucket agora-app-builder-backend-go-builds --key ${BUILD_NUMBER}"
-                sh "aws s3 cp slug.tgz s3://agora-app-builder-backend-go-builds/slug.tgz"
+                    sh "aws s3 cp slug.tgz s3://agora-app-builder-backend-go-builds/dev/slug.tgz"
+                }
+            deleteDir()
+            }
+		}
+
+		stage('push to s3-staging') {
+            when {
+                branch 'master'
+		    }
+            steps {
+                script {
+                    sh "aws s3 cp slug.tgz s3://agora-app-builder-backend-go-builds/staging/slug.tgz"
                 }
             deleteDir()
             }
