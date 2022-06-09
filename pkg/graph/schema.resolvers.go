@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (r *mutationResolver) CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool) (*models.ShareResponse, error) {
+func (r *mutationResolver) CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool, channelState string) (*models.ShareResponse, error) {
 	r.Logger.Info().Str("mutation", "CreateChannel").Str("title", title).Msg("Creating Channel")
 	if enablePstn != nil {
 		r.Logger.Info().Bool("enablePstn", *enablePstn).Msg("")
@@ -118,9 +118,10 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, back
 		HostPassphrase:   hostPhrase,
 		ViewerPassphrase: viewPhrase,
 		DTMF:             *dtmfResult,
+		ChannelState:     channelState,
 	}
 
-	_, err = r.DB.NamedExec("INSERT INTO channels (title, channel_name, channel_secret, host_passphrase, viewer_passphrase, dtmf) VALUES (:title, :channel_name, :channel_secret, :host_passphrase, :viewer_passphrase, :dtmf)", newChannel)
+	_, err = r.DB.NamedExec("INSERT INTO channels (title, channel_name, channel_secret, host_passphrase, viewer_passphrase, dtmf, channel_state) VALUES (:title, :channel_name, :channel_secret, :host_passphrase, :viewer_passphrase, :dtmf, :channel_state)", newChannel)
 
 	if err != nil {
 		r.Logger.Error().Err(err).Interface("channel details", newChannel).Msg("Adding new channel to DB Failed")
@@ -450,7 +451,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 		return nil, errors.New("Passphrase cannot be empty")
 	}
 
-	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
+	err := r.DB.Get(&channelData, "SELECT title, channel_name, channel_secret, host_passphrase, viewer_passphrase, channel_state FROM channels WHERE host_passphrase = $1 OR viewer_passphrase = $1", passphrase)
 	if err != nil {
 		r.Logger.Error().Err(err).Str("passphrase", passphrase).Msg("Invalid Passphrase")
 		return nil, errors.New("Invalid URL")
@@ -478,12 +479,13 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 	}
 
 	return &models.Session{
-		Title:       channelData.Title,
-		Channel:     channelData.ChannelName,
-		IsHost:      host,
-		MainUser:    mainUser,
-		ScreenShare: screenShare,
-		Secret:      channelData.ChannelSecret,
+		Title:        channelData.Title,
+		Channel:      channelData.ChannelName,
+		IsHost:       host,
+		MainUser:     mainUser,
+		ScreenShare:  screenShare,
+		Secret:       channelData.ChannelSecret,
+		ChannelState: channelData.ChannelState,
 	}, nil
 }
 

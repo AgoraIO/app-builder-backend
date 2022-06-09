@@ -13,12 +13,13 @@ type Passphrase struct {
 }
 
 type Session struct {
-	Channel     string           `json:"channel"`
-	Title       string           `json:"title"`
-	IsHost      bool             `json:"isHost"`
-	Secret      string           `json:"secret"`
-	MainUser    *UserCredentials `json:"mainUser"`
-	ScreenShare *UserCredentials `json:"screenShare"`
+	Channel      string           `json:"channel"`
+	Title        string           `json:"title"`
+	IsHost       bool             `json:"isHost"`
+	Secret       string           `json:"secret"`
+	MainUser     *UserCredentials `json:"mainUser"`
+	ScreenShare  *UserCredentials `json:"screenShare"`
+	ChannelState string           `json:"channelState"`
 }
 
 type ShareResponse struct {

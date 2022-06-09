@@ -44,7 +44,7 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateChannel         func(childComplexity int, title string, backendURL string, enablePstn *bool) int
+		CreateChannel         func(childComplexity int, title string, backendURL string, enablePstn *bool, channelState string) int
 		LogoutSession         func(childComplexity int, token string) int
 		MutePstn              func(childComplexity int, uid int, passphrase string, mute *bool) int
 		SetNormal             func(childComplexity int, passphrase string) int
@@ -71,12 +71,13 @@ type ComplexityRoot struct {
 	}
 
 	Session struct {
-		Channel     func(childComplexity int) int
-		IsHost      func(childComplexity int) int
-		MainUser    func(childComplexity int) int
-		ScreenShare func(childComplexity int) int
-		Secret      func(childComplexity int) int
-		Title       func(childComplexity int) int
+		Channel      func(childComplexity int) int
+		ChannelState func(childComplexity int) int
+		IsHost       func(childComplexity int) int
+		MainUser     func(childComplexity int) int
+		ScreenShare  func(childComplexity int) int
+		Secret       func(childComplexity int) int
+		Title        func(childComplexity int) int
 	}
 
 	ShareResponse struct {
@@ -104,7 +105,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool) (*models.ShareResponse, error)
+	CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool, channelState string) (*models.ShareResponse, error)
 	MutePstn(ctx context.Context, uid int, passphrase string, mute *bool) (*models.UIDMuteState, error)
 	SetPresenter(ctx context.Context, uid int, passphrase string) (int, error)
 	SetNormal(ctx context.Context, passphrase string) (string, error)
@@ -144,7 +145,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateChannel(childComplexity, args["title"].(string), args["backendURL"].(string), args["enablePSTN"].(*bool)), true
+		return e.complexity.Mutation.CreateChannel(childComplexity, args["title"].(string), args["backendURL"].(string), args["enablePSTN"].(*bool), args["channelState"].(string)), true
 
 	case "Mutation.logoutSession":
 		if e.complexity.Mutation.LogoutSession == nil {
@@ -295,6 +296,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Session.Channel(childComplexity), true
+
+	case "Session.channelState":
+		if e.complexity.Session.ChannelState == nil {
+			break
+		}
+
+		return e.complexity.Session.ChannelState(childComplexity), true
 
 	case "Session.isHost":
 		if e.complexity.Session.IsHost == nil {
@@ -502,6 +510,7 @@ type Session {
   secret: String!
   mainUser: UserCredentials!
   screenShare: UserCredentials!
+  channelState: String!
 }
 
 type User {
@@ -521,7 +530,7 @@ type Query {
 }
 
 type Mutation {
-  createChannel(title: String!, backendURL: String!, enablePSTN: Boolean = false): ShareResponse!
+  createChannel(title: String!, backendURL: String!, enablePSTN: Boolean = false, channelState: String!): ShareResponse!
   mutePSTN(uid: Int!, passphrase: String!, mute: Boolean = true): UIDMuteState!
   setPresenter(uid: Int!, passphrase: String!): Int!
   setNormal(passphrase: String!): String!
@@ -567,6 +576,15 @@ func (ec *executionContext) field_Mutation_createChannel_args(ctx context.Contex
 		}
 	}
 	args["enablePSTN"] = arg2
+	var arg3 string
+	if tmp, ok := rawArgs["channelState"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelState"))
+		arg3, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["channelState"] = arg3
 	return args, nil
 }
 
@@ -819,7 +837,7 @@ func (ec *executionContext) _Mutation_createChannel(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateChannel(rctx, args["title"].(string), args["backendURL"].(string), args["enablePSTN"].(*bool))
+		return ec.resolvers.Mutation().CreateChannel(rctx, args["title"].(string), args["backendURL"].(string), args["enablePSTN"].(*bool), args["channelState"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1662,6 +1680,41 @@ func (ec *executionContext) _Session_screenShare(ctx context.Context, field grap
 	res := resTmp.(*models.UserCredentials)
 	fc.Result = res
 	return ec.marshalNUserCredentials2ᚖgithubᚗcomᚋsamyakᚑjainᚋagora_backendᚋpkgᚋmodelsᚐUserCredentials(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Session_channelState(ctx context.Context, field graphql.CollectedField, obj *models.Session) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Session",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChannelState, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ShareResponse_passphrase(ctx context.Context, field graphql.CollectedField, obj *models.ShareResponse) (ret graphql.Marshaler) {
@@ -3372,6 +3425,11 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "screenShare":
 			out.Values[i] = ec._Session_screenShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "channelState":
+			out.Values[i] = ec._Session_channelState(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

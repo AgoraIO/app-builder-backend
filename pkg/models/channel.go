@@ -24,4 +24,5 @@ type Channel struct {
 	RecordingUID     sql.NullInt32  `db:"recording_uid"`
 	RecordingSID     sql.NullString `db:"recording_sid"`
 	RecordingRID     sql.NullString `db:"recording_rid"`
+	ChannelState     string         `db:"channel_state"`
 }
