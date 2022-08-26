@@ -14,7 +14,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
+	"net/http/httputil"
 
 	"github.com/spf13/viper"
 )
@@ -89,8 +91,8 @@ func (m *MediaPush) RTMPConverters(channelName string, uuid int, streamKey strin
 				},
 				VideoOptions: VideoOptions{
 					Canvas: Canvas{
-						Width:  1280,
-						Height: 720,
+						Width:  viper.GetInt("CANVAS_WIDTH"),
+						Height: viper.GetInt("CANVAS_HEIGHT"),
 					},
 					Layout: []Layout{
 						{
@@ -99,24 +101,24 @@ func (m *MediaPush) RTMPConverters(channelName string, uuid int, streamKey strin
 								XPos:   0,
 								YPos:   0,
 								ZIndex: 1,
-								Width:  1080,
-								Height: 720,
+								Width:  viper.GetInt("LAYOUT_WIDTH"),
+								Height: viper.GetInt("LAYOUT_HEIGHT"),
 							},
 							FillMode:            "fill",
 							PlaceholderImageURL: "http://example.agora.io/user_placeholder.jpg",
 						},
 					},
 					CodecProfile: "high",
-					FrameRate:    30,
-					Gop:          60,
-					Bitrate:      2500,
+					FrameRate:    viper.GetInt("VIDEO_FRAME_RATE"),
+					Gop:          viper.GetInt("VIDEO_GOP"),
+					Bitrate:      viper.GetInt("VIDEO_BIT_RATE"),
 					SeiOptions:   struct{}{},
 				},
 			},
 			RtmpURL: "rtmps://examplepush.agoramdn.com/live/" + streamKey,
 		},
 	})
-	m.Logger.Debug().Interface("dsadas", viper.GetString("PROJECT_APP_ID")).Msg("Converter Result")
+
 	req, err := http.NewRequest("POST", "https://api.agora.io/ap/v1/projects/"+viper.GetString("APP_ID")+"/rtmp-converters",
 		bytes.NewBuffer(requestBody))
 	if err != nil {
@@ -125,6 +127,12 @@ func (m *MediaPush) RTMPConverters(channelName string, uuid int, streamKey strin
 
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(viper.GetString("CUSTOMER_ID"), viper.GetString("CUSTOMER_CERTIFICATE"))
+
+	reqDump, err := httputil.DumpRequestOut(req, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	m.Logger.Debug().Interface("Request", string(reqDump)).Msg("Request")
 
 	resp, err := m.Do(req)
 	if err != nil {
