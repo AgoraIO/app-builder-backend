@@ -1,13 +1,3 @@
-// ********************************************
-// Copyright © 2021 Agora Lab, Inc., all rights reserved.
-// AppBuilder and all associated components, source code, APIs, services, and documentation
-// (the “Materials”) are owned by Agora Lab, Inc. and its licensors.  The Materials may not be
-// accessed, used, modified, or distributed for any purpose without a license from Agora Lab, Inc.
-// Use without a license or in violation of any license terms and conditions (including use for
-// any purpose competitive to Agora Lab, Inc.’s business) is strictly prohibited.  For more
-// information visit https://appbuilder.agora.io.
-// *********************************************
-
 package graph
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
@@ -30,6 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, title string, backendURL string, enablePstn *bool) (*models.ShareResponse, error) {
 	r.Logger.Info().Str("mutation", "CreateChannel").Str("title", title).Msg("Creating Channel")
 	if enablePstn != nil {
@@ -138,6 +129,7 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, title string, back
 	}, nil
 }
 
+// MutePstn is the resolver for the mutePSTN field.
 func (r *mutationResolver) MutePstn(ctx context.Context, uid int, passphrase string, mute *bool) (*models.UIDMuteState, error) {
 	r.Logger.Info().Str("mutation", "MutePSTN").Int("uid", uid).Str("passphrase", passphrase).Bool("mute", *mute).Msg("Creating Channel")
 
@@ -174,6 +166,7 @@ func (r *mutationResolver) MutePstn(ctx context.Context, uid int, passphrase str
 	}
 }
 
+// SetPresenter is the resolver for the setPresenter field.
 func (r *mutationResolver) SetPresenter(ctx context.Context, uid int, passphrase string) (int, error) {
 	r.Logger.Info().Str("mutation", "SetPresenter").Str("passphrase", passphrase).Int("uid", uid).Msg("")
 
@@ -203,6 +196,7 @@ func (r *mutationResolver) SetPresenter(ctx context.Context, uid int, passphrase
 	return uid, nil
 }
 
+// SetNormal is the resolver for the setNormal field.
 func (r *mutationResolver) SetNormal(ctx context.Context, passphrase string) (string, error) {
 	r.Logger.Info().Str("mutation", "SetPresenter").Str("passphrase", passphrase).Msg("")
 
@@ -232,6 +226,7 @@ func (r *mutationResolver) SetNormal(ctx context.Context, passphrase string) (st
 	return "success", nil
 }
 
+// UpdateUserName is the resolver for the updateUserName field.
 func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*models.User, error) {
 	r.Logger.Info().Str("mutation", "UpdateUserName").Str("name", name).Msg("")
 
@@ -263,6 +258,7 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, name string) (*mo
 	}, nil
 }
 
+// StartRecordingSession is the resolver for the startRecordingSession field.
 func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase string, secret *string) (string, error) {
 	r.Logger.Info().Str("mutation", "StartRecordingSession").Str("passphrase", passphrase).Msg("")
 	if secret != nil {
@@ -352,6 +348,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 	return "success", nil
 }
 
+// StopRecordingSession is the resolver for the stopRecordingSession field.
 func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase string) (string, error) {
 	r.Logger.Info().Str("mutation", "StopRecordingSession").Str("passphrase", passphrase).Msg("")
 
@@ -395,6 +392,7 @@ func (r *mutationResolver) StopRecordingSession(ctx context.Context, passphrase 
 	return "success", nil
 }
 
+// LogoutSession is the resolver for the logoutSession field.
 func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]string, error) {
 	r.Logger.Info().Str("mutation", "LogoutSession").Str("token", token).Msg("")
 
@@ -440,6 +438,27 @@ func (r *mutationResolver) LogoutSession(ctx context.Context, token string) ([]s
 	return string_token_slice, nil
 }
 
+// Golive is the resolver for the golive field.
+func (r *mutationResolver) Golive(ctx context.Context, channelName string, uuid int) (string, error) {
+	media := &utils.MediaPush{
+		Logger: r.Logger,
+	}
+
+	streamKey, err := media.LiveStreams()
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("live streams api failed")
+		return "", errInternalServer
+	}
+
+	err = media.RTMPConverters(channelName, uuid, streamKey)
+	if err != nil {
+		r.Logger.Error().Err(err).Msg("rtmp converters api failed")
+		return "", errInternalServer
+	}
+	return "https://examplepull.agoramdn.com/live/" + streamKey + "/playlist.m3u8", nil
+}
+
+// JoinChannel is the resolver for the joinChannel field.
 func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*models.Session, error) {
 	r.Logger.Info().Str("query", "JoinChannel").Str("passphrase", passphrase).Msg("")
 
@@ -487,6 +506,7 @@ func (r *queryResolver) JoinChannel(ctx context.Context, passphrase string) (*mo
 	}, nil
 }
 
+// Share is the resolver for the share field.
 func (r *queryResolver) Share(ctx context.Context, passphrase string) (*models.ShareResponse, error) {
 	r.Logger.Info().Str("query", "Share").Str("passphrase", passphrase).Msg("Share")
 
@@ -547,6 +567,7 @@ func (r *queryResolver) Share(ctx context.Context, passphrase string) (*models.S
 	}, nil
 }
 
+// GetUser is the resolver for the getUser field.
 func (r *queryResolver) GetUser(ctx context.Context) (*models.User, error) {
 	r.Logger.Info().Str("query", "GetUser").Msg("")
 

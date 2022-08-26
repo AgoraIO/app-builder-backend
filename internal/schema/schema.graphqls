@@ -55,4 +55,5 @@ type Mutation {
   startRecordingSession(passphrase: String!, secret: String): String!
   stopRecordingSession(passphrase: String!): String!
   logoutSession(token: String!): [String!]
+  golive(channelName: String!, uuid: Int!): String!
 }
