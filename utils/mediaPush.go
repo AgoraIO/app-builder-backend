@@ -86,8 +86,8 @@ func (m *MediaPush) RTMPConverters(channelName string, uuid int, streamKey strin
 				AudioOptions: AudioOptions{
 					CodecProfile:  "LC-AAC",
 					SampleRate:    48000,
-					Bitrate:       48,
-					AudioChannels: 1,
+					Bitrate:       viper.GetInt("AUDIO_BIT_RATE"),
+					AudioChannels: viper.GetInt("AUDIO_CHANNEL"),
 				},
 				VideoOptions: VideoOptions{
 					Canvas: Canvas{
@@ -105,7 +105,7 @@ func (m *MediaPush) RTMPConverters(channelName string, uuid int, streamKey strin
 								Height: viper.GetInt("LAYOUT_HEIGHT"),
 							},
 							FillMode:            "fill",
-							PlaceholderImageURL: "http://example.agora.io/user_placeholder.jpg",
+							PlaceholderImageURL: viper.GetString("PLACEHOLDER_IMAGE_URL"),
 						},
 					},
 					CodecProfile: "high",
@@ -115,7 +115,7 @@ func (m *MediaPush) RTMPConverters(channelName string, uuid int, streamKey strin
 					SeiOptions:   struct{}{},
 				},
 			},
-			RtmpURL: "rtmps://examplepush.agoramdn.com/live/" + streamKey,
+			RtmpURL: viper.GetString("RTMP_URL") + streamKey,
 		},
 	})
 

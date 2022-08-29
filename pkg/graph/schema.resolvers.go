@@ -455,7 +455,7 @@ func (r *mutationResolver) Golive(ctx context.Context, channelName string, uuid 
 		r.Logger.Error().Err(err).Msg("rtmp converters api failed")
 		return "", errInternalServer
 	}
-	return "https://examplepull.agoramdn.com/live/" + streamKey + "/playlist.m3u8", nil
+	return viper.GetString("PULL_URL") + streamKey + "/playlist.m3u8", nil
 }
 
 // JoinChannel is the resolver for the joinChannel field.
