@@ -16,11 +16,6 @@ COPY . .
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/bin/server /server/cmd/video_conferencing
 
-# Second step to build minimal image
-FROM scratch
-COPY --from=build-env /go/bin/server /go/bin/server
-COPY --from=build-env /server/config.json config.json
-COPY --from=build-env /server/migrations migrations
-
+EXPOSE 8080
 
 ENTRYPOINT ["/go/bin/server"]
