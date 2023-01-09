@@ -3,7 +3,7 @@
     "repository": "https://github.com/samyak-jain/AgoraBackend",
     "addons": [
         {
-            "plan": "heroku-postgresql:hobby-dev",
+            "plan": "heroku-postgresql:mini",
             "options": {
                 "version": "12"
             }
