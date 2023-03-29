@@ -181,7 +181,7 @@ func (rec *Recorder) Start(channelTitle string, secret *string) error {
 				AccessKey: viper.GetString("BUCKET_ACCESS_KEY"),
 				SecretKey: viper.GetString("BUCKET_ACCESS_SECRET"),
 				FileNamePrefix: []string{
-					channelTitle, currentDate, currentTime,
+					channelTitle
 				},
 			},
 			RecordingFileConfig: RecordingFileConfig{
