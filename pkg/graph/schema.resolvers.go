@@ -313,7 +313,7 @@ func (r *mutationResolver) StartRecordingSession(ctx context.Context, passphrase
 		title = authUser.UserName.String
 	}
 
-	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	reg, err := regexp.Compile("[^a-zA-Z0-9-]+")
 	if err != nil {
 		log.Error().Err(err).Msg("Regex Compilation failed")
 	}
