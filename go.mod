@@ -19,8 +19,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.20.0
 	github.com/spf13/viper v1.7.0
-	github.com/vektah/gqlparser v1.3.1 // indirect
-	github.com/vektah/gqlparser/v2 v2.1.0
+	github.com/vektah/gqlparser/v2 v2.5.14
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
