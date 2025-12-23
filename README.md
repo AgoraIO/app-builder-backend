@@ -1,3 +1,6 @@
+> [!WARNING]
+> This project has been superseded by our managed service. To use App Builder, please sign up **[here](https://appbuilder.agora.io/)** instead.
+
 <p align="center">
   <img src="https://user-images.githubusercontent.com/10133258/120986333-1b30b500-c79a-11eb-99ba-77120f4c59f1.png" alt="Agora App Builder"/>
 </p>
@@ -39,3 +42,4 @@ To get started with this project. Refer to the docs here: https://appbuilder.ago
 - [PostgreSQL](https://www.postgresql.org/) - Database
 - [GraphQL](https://graphql.org/) - Query Language
 - [GoLang](https://golang.org/) - Server Environment
+
